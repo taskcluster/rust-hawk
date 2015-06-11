@@ -1,0 +1,4 @@
+Hawk Authentication for Rust
+============================
+
+
