@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::fmt;
 use rustc_serialize::base64::FromBase64;
 use time::Timespec;
+use std::ascii::AsciiExt;
 
 #[derive(Debug)]
 pub enum Error {
@@ -53,7 +54,7 @@ impl hyper::header::Scheme for Scheme {
 impl FromStr for Scheme {
   type Err = Error;
   fn from_str(s: &str) -> Result<Scheme, Error> {
-    //s.substr[]
+    println!("Scheme  : {}", s[..4].eq_ignore_ascii_case("hawk"));
     println!("AUTH: {}", &s[4..]);
 
 
