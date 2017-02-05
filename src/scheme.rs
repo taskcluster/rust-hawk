@@ -36,7 +36,7 @@ impl hyper::header::Scheme for HawkScheme {
     }
 
     fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Hello word")
+        f.write_str("Hawk blah=foo") // TODO
     }
 }
 
@@ -202,6 +202,8 @@ fn scheme_from_string() {
                                   mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"");
     assert!(s.is_ok(), "Parse failed!");
 }
+
+// TODO: more tests of from_str
 
 // #[test]
 // fn scheme_from_string_again() {

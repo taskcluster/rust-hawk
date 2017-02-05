@@ -26,6 +26,9 @@ var handler = function (req, res) {
 
         // Prepare response
 
+        if (err) {
+          console.error(err);
+        }
         var payload = (!err ? 'Hello ' + credentials.user + ' ' + artifacts.ext : 'Shoosh!');
         var headers = { 'Content-Type': 'text/plain' };
 
