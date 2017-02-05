@@ -4,9 +4,9 @@ version = "0.0.1"
 authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>"]
 license = "MPL-2.0"
 readme = "README.md"
-repository = "https://github.com/jonasfj/hawk-rust"
-documentation = "https://github.com/jonasfj/hawk-rust"
-homepage = "https://github.com/jonasfj/hawk-rust"
+repository = "https://github.com/taskcluster/hawk-rust"
+documentation = "https://github.com/taskcluster/hawk-rust"
+homepage = "https://github.com/taskcluster/hawk-rust"
 description = "Hawk Implementation for rust using Hyper"
 
 [dependencies]
