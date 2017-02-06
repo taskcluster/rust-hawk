@@ -4,9 +4,11 @@ extern crate time;
 
 use std::str::FromStr;
 use std::fmt;
-use rustc_serialize::base64::FromBase64;
+use rustc_serialize::base64::{FromBase64, ToBase64};
+use rustc_serialize::base64;
 use time::Timespec;
 use std::ascii::AsciiExt;
+use hyper::header::Scheme;
 
 #[derive(Debug)]
 pub enum Error {
@@ -30,29 +32,46 @@ pub struct HawkScheme {
     pub dlg: Option<String>,
 }
 
-impl hyper::header::Scheme for HawkScheme {
+impl Scheme for HawkScheme {
     fn scheme() -> Option<&'static str> {
         Some("Hawk")
     }
 
     fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Hawk blah=foo") // TODO
+        let base64_config = base64::Config {
+            char_set: base64::CharacterSet::Standard,
+            newline: base64::Newline::LF,
+            pad: true,
+            line_length: None,
+        };
+        try!(write!(f,
+                    "Hawk id=\"{}\", ts={}, nonce=\"{}\", mac=\"{}\"",
+                    self.id,
+                    self.ts.sec,
+                    self.nonce,
+                    self.mac.to_base64(base64_config),
+                    ));
+        if let Some(ref ext) = self.ext {
+            try!(write!(f, ", ext=\"{}\"", ext));
+        }
+        if let Some(ref hash) = self.hash {
+            try!(write!(f, ", hash=\"{}\"", hash.to_base64(base64_config)));
+        }
+        if let Some(ref app) = self.app {
+            try!(write!(f, ", app=\"{}\"", app));
+        }
+        if let Some(ref dlg) = self.dlg {
+            try!(write!(f, ", dlg=\"{}\"", dlg));
+        }
+        Ok(())
     }
 }
 
-// Authorization: Hawk id="dh37fgj492je", ts="1353832234", nonce="j4h3g2", ext="some-app-ext-data", mac="6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE="
-//
-// Hawk id="test-client", ts="1430002620", nonce="DG2EzX", ext="some-app-data", mac="CCO2lSpvIcATFl4rdrBBRVYEnLhVa/nyrMhC0Tk/JlM=", hash="", app="", dlg=""
-
-// Hawk id="test-client", // string
-// ts="1430002620", // date
-// nonce="DG2EzX", // string
-// mac="CCO2lSpvIcATFl4rdrBBRVYEnLhVa/nyrMhC0Tk/JlM=", // bytes
-// ext="some-app-data", (optional) // string
-// hash="", (optional) // bytes
-// app="", (optional) // string
-// dlg="" (optional)  // string
-//
+impl fmt::Display for HawkScheme {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_scheme(f)
+    }
+}
 
 impl FromStr for HawkScheme {
     type Err = Error;
@@ -63,9 +82,6 @@ impl FromStr for HawkScheme {
         }
 
         let mut p = &s[4..];
-        println!("");
-        println!("AUTH: '{}'", &p);
-        println!("Length: {}", p.len());
 
         // Required attributes
         let mut id: Option<&str> = None;
@@ -195,30 +211,90 @@ impl FromStr for HawkScheme {
     }
 }
 
-#[test]
-fn scheme_from_string() {
-    let s = HawkScheme::from_str("Hawk , id  =  \"dh37fgj492je\", ts=\"1353832234\", \
-                                  nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
-                                  mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"");
-    assert!(s.is_ok(), "Parse failed!");
+#[cfg(test)]
+mod test {
+    use super::HawkScheme;
+    use hyper::header::Scheme;
+    use std::str::FromStr;
+    use time::Timespec;
+
+    #[test]
+    fn scheme_from_str_messy() {
+        let s = HawkScheme::from_str("Hawk , id  =  \"dh37fgj492je\", ts=\"1353832234\", \
+                                      nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
+                                      mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
+            .unwrap();
+        assert!(s.id == "dh37fgj492je");
+        assert!(s.ts == Timespec::new(1353832234, 0));
+        assert!(s.nonce == "j4h3g2");
+        assert!(s.mac ==
+                vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150, 194, 55, 135, 206,
+                     48, 6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44, 1]);
+        assert!(s.ext.unwrap() == "some-app-ext-data");
+        assert!(s.app == None);
+        assert!(s.dlg == None);
+    }
+
+    #[test]
+    fn scheme_from_str2() {
+        let s = HawkScheme::from_str("Hawk id=\"dh37fgj492je\", ts=\"1353832234\", \
+                                      nonce=\"j4h3g2\", ext=\"some-app-ext-data\", \
+                                      mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
+                                      hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
+                                      app=\"my-app\", dlg=\"my-authority\"")
+            .unwrap();
+        assert!(s.id == "dh37fgj492je");
+        assert!(s.ts == Timespec::new(1353832234, 0));
+        assert!(s.nonce == "j4h3g2");
+        assert!(s.mac ==
+                vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150, 194, 55, 135, 206,
+                     48, 6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44, 1]);
+        assert!(s.ext.unwrap() == "some-app-ext-data");
+        assert!(s.app == Some("my-app".to_string()));
+        assert!(s.dlg == Some("my-authority".to_string()));
+    }
+
+    // TODO: more tests of from_str
+
+    #[test]
+    fn scheme_to_str_minimal() {
+        let s = HawkScheme {
+            id: "dh37fgj492je".to_string(),
+            ts: Timespec::new(1353832234, 0),
+            nonce: "j4h3g2".to_string(),
+            mac: vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65, 69, 86, 4,
+                      156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57, 63, 38, 83],
+            ext: None,
+            hash: None,
+            app: None,
+            dlg: None,
+        };
+        let formatted = format!("{}", s);
+        assert!(formatted ==
+                "Hawk id=\"dh37fgj492je\", ts=1353832234, nonce=\"j4h3g2\", \
+                 mac=\"CCO2lSpvIcATFl4rdrBBRVYEnLhVa/nyrMhC0Tk/JlM=\"")
+    }
+
+    #[test]
+    fn scheme_to_str_maximal() {
+        let s = HawkScheme {
+            id: "dh37fgj492je".to_string(),
+            ts: Timespec::new(1353832234, 0),
+            nonce: "j4h3g2".to_string(),
+            mac: vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65, 69, 86, 4,
+                      156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57, 63, 38, 83],
+            ext: Some("my-ext-value".to_string()),
+            hash: Some(vec![1, 2, 3, 4]),
+            app: Some("my-app".to_string()),
+            dlg: Some("my-dlg".to_string()),
+        };
+        let formatted = format!("{}", s);
+        assert!(formatted ==
+                "Hawk id=\"dh37fgj492je\", ts=1353832234, nonce=\"j4h3g2\", \
+                 mac=\"CCO2lSpvIcATFl4rdrBBRVYEnLhVa/nyrMhC0Tk/JlM=\", ext=\"my-ext-value\", \
+                 hash=\"AQIDBA==\", app=\"my-app\", dlg=\"my-dlg\"")
+    }
+
+    // TODO: test invalid HawkScheme with `"` in some values
+    // TODO: test round-tripping with all fields omitted, included
 }
-
-// TODO: more tests of from_str
-
-// #[test]
-// fn scheme_from_string_again() {
-// let s = HawkScheme::from_str(
-// "Hawk \
-// id=\"dh37fgj492je\", \
-// ts=\"1353832234\", \
-// nonce=\"j4h3g2\", \
-// ext=\"some-app-ext-data\", \
-// mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
-// hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
-// app=\"my-app\", \
-// dlg=\"my-authority\""
-// );
-// assert!(s.is_ok(), "Parse failed!");
-// }
-//
-//
