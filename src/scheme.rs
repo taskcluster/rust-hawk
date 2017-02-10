@@ -1,18 +1,10 @@
-use std::str::FromStr;
-use std::fmt;
-use std::io::Write;
-use rustc_serialize::base64::{FromBase64, ToBase64};
-use rustc_serialize::base64;
-use time;
-use time::Timespec;
-use std::ascii::AsciiExt;
 use hyper::header::Scheme;
-use hyper::client::IntoUrl;
-use hyper::method::Method;
-use crypto::sha2::Sha256;
-use crypto::mac::Mac;
-use crypto::hmac::Hmac;
-use std::io;
+use rustc_serialize::base64;
+use rustc_serialize::base64::{FromBase64, ToBase64};
+use std::ascii::AsciiExt;
+use std::fmt;
+use std::str::FromStr;
+use time::Timespec;
 
 #[derive(Debug)]
 pub enum Error {
@@ -22,26 +14,6 @@ pub enum Error {
     UnknownAttribute,
     InvalidTimestamp,
     Base64DecodeError,
-}
-
-#[derive(Debug)]
-pub struct Credentials {
-    pub id: Vec<u8>,
-    pub key: Vec<u8>,
-    pub algorithm: String,
-}
-
-impl Credentials {
-    pub fn new<B, S>(id: B, key: B, algorithm: S) -> Credentials
-        where B: Into<Vec<u8>>,
-              S: Into<String>
-    {
-        Credentials {
-            id: id.into(),
-            key: key.into(),
-            algorithm: algorithm.into(),
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -57,76 +29,6 @@ pub struct HawkScheme {
 }
 
 impl HawkScheme {
-    /// Create a new HawkScheme for the given request.
-    pub fn for_request<U>(url: U,
-                          method: Method,
-                          credentials: &Credentials,
-                          ext: Option<String>)
-                          -> Result<HawkScheme, io::Error>
-        where U: IntoUrl
-    {
-        let mut buffer: Vec<u8> = vec![];
-        let url = match url.into_url() {
-            Ok(u) => u,
-            Err(e) => {
-                // TODO: blergh.
-                return Err(io::Error::new(io::ErrorKind::Other, format!("{}", e)));
-            }
-        };
-
-        let mut scheme = HawkScheme {
-            id: "id".to_string(), // TODO: random
-            ts: time::now_utc().to_timespec(),
-            nonce: "nonce".to_string(), // TODO: random
-            mac: vec![],
-            ext: ext,
-            hash: None, // TODO: allow
-            app: None, // TODO: allow
-            dlg: None, // TODO: allow
-        };
-
-        // write out the hash contents, per the Hawk spec
-        try!(write!(buffer, "hawk.1.header\n"));
-        try!(write!(buffer, "{}\n", scheme.ts.sec));
-        try!(write!(buffer, "{}\n", scheme.nonce)); // TODO: nonce
-        try!(write!(buffer, "{}\n", method));
-        try!(write!(buffer, "{}\n", url.path()));
-        try!(write!(buffer, "{}\n", url.host_str().expect("url has no host")));
-        // TODO: missing port
-        try!(write!(buffer, "{}\n", url.port().expect("url has no port")));
-        try!(write!(buffer,
-                    "{}\n",
-                    match scheme.hash {
-                        Some(ref h) => {
-                            h.to_base64(base64::Config {
-                                char_set: base64::CharacterSet::Standard,
-                                newline: base64::Newline::LF,
-                                pad: true,
-                                line_length: None,
-                            })
-                        }
-                        None => "".to_string(),
-                    }));
-        try!(write!(buffer,
-                    "{}\n",
-                    match scheme.ext {
-                        Some(ref e) => e,
-                        None => "",
-                    }));
-
-        println!("{:?}", String::from_utf8(buffer.clone()).unwrap());
-
-        assert!(credentials.algorithm == "sha256"); // TODO
-        let mut hmac = Hmac::new(Sha256::new(), &credentials.key);
-        println!("{:?}", buffer);
-        hmac.input(&buffer);
-
-        scheme.mac = vec![0; hmac.output_bytes()];
-        hmac.raw_result(&mut scheme.mac[..]);
-
-        Ok(scheme)
-    }
-
     fn check_component<S>(value: S) -> String
         where S: Into<String>
     {

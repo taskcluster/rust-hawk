@@ -10,19 +10,19 @@
 //! extern crate hawk;
 //! extern crate hyper;
 //!
-//! use hawk::HawkScheme;
+//! use hawk::Request;
 //! use hawk::Credentials;
 //! use hyper::Client;
+//! use hyper::client::IntoUrl;
 //!
 //! fn main() {
 //!     let mut headers = hyper::header::Headers::new();
 //!     let credentials = Credentials::new("test-client", "no-secret", "sha256");
-//!     let scheme = HawkScheme::for_request("http://localhost:8000/resource",
-//!                                          hyper::Get,
-//!                                          &credentials,
-//!                                          None)
-//!         .unwrap();
-//!     headers.set(hyper::header::Authorization(scheme));
+//!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
+//!                                hyper::Get,
+//!                                credentials,
+//!                                None);
+//!     headers.set(hyper::header::Authorization(request.hyper_scheme().unwrap()));
 //!
 //!     let client = Client::new();
 //!     let res = client.get("http://localhost:8000/resource")
@@ -40,4 +40,7 @@ extern crate time;
 extern crate crypto;
 
 mod scheme;
-pub use scheme::{HawkScheme, Credentials};
+pub use scheme::HawkScheme;
+
+mod request;
+pub use request::{Credentials, Request};
