@@ -5,7 +5,7 @@ use hyper::method::Method;
 use hyper::Url;
 use std::io;
 use std::io::Write;
-use super::scheme::HawkScheme;
+use super::scheme::Scheme;
 use time;
 use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
@@ -48,7 +48,7 @@ impl Request {
         }
     }
 
-    pub fn hyper_scheme(&self) -> Result<HawkScheme, io::Error> {
+    pub fn hyper_scheme(&self) -> Result<Scheme, io::Error> {
         let id = "id".to_string(); // TODO: random
         let ts = time::now_utc().to_timespec();
         let nonce = "nonce".to_string(); // TODO: random
@@ -108,6 +108,6 @@ impl Request {
         let mut mac = vec![0; hmac.output_bytes()];
         hmac.raw_result(&mut mac[..]);
 
-        return Ok(HawkScheme::new_extended(id, ts, nonce, mac, self.ext.clone(), hash, app, dlg));
+        return Ok(Scheme::new_extended(id, ts, nonce, mac, self.ext.clone(), hash, app, dlg));
     }
 }

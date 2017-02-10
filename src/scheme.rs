@@ -1,4 +1,4 @@
-use hyper::header::Scheme;
+use hyper::header::Scheme as HyperScheme;
 use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::ascii::AsciiExt;
@@ -17,7 +17,7 @@ pub enum Error {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct HawkScheme {
+pub struct Scheme {
     id: String,
     ts: Timespec,
     nonce: String,
@@ -28,7 +28,7 @@ pub struct HawkScheme {
     dlg: Option<String>,
 }
 
-impl HawkScheme {
+impl Scheme {
     fn check_component<S>(value: S) -> String
         where S: Into<String>
     {
@@ -39,17 +39,17 @@ impl HawkScheme {
         value
     }
 
-    /// Create a new HawkScheme with the basic fields.  This is a low-level function.
+    /// Create a new Scheme with the basic fields.  This is a low-level function.
     ///
     /// None of the scheme components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
-    pub fn new<S>(id: S, ts: Timespec, nonce: S, mac: Vec<u8>) -> HawkScheme
+    pub fn new<S>(id: S, ts: Timespec, nonce: S, mac: Vec<u8>) -> Scheme
         where S: Into<String>
     {
-        HawkScheme::new_extended(id, ts, nonce, mac, None, None, None, None)
+        Scheme::new_extended(id, ts, nonce, mac, None, None, None, None)
     }
 
-    /// Create a new HawkScheme with the full set of Hawk fields.  This is a low-level funtion.
+    /// Create a new Scheme with the full set of Hawk fields.  This is a low-level funtion.
     ///
     /// None of the scheme components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
@@ -61,32 +61,32 @@ impl HawkScheme {
                            hash: Option<Vec<u8>>,
                            app: Option<S>,
                            dlg: Option<S>)
-                           -> HawkScheme
+                           -> Scheme
         where S: Into<String>
     {
-        HawkScheme {
-            id: HawkScheme::check_component(id),
+        Scheme {
+            id: Scheme::check_component(id),
             ts: ts,
-            nonce: HawkScheme::check_component(nonce),
+            nonce: Scheme::check_component(nonce),
             mac: mac,
             ext: match ext {
-                Some(ext) => Some(HawkScheme::check_component(ext)),
+                Some(ext) => Some(Scheme::check_component(ext)),
                 None => None,
             },
             hash: hash,
             app: match app {
-                Some(app) => Some(HawkScheme::check_component(app)),
+                Some(app) => Some(Scheme::check_component(app)),
                 None => None,
             },
             dlg: match dlg {
-                Some(dlg) => Some(HawkScheme::check_component(dlg)),
+                Some(dlg) => Some(Scheme::check_component(dlg)),
                 None => None,
             },
         }
     }
 }
 
-impl Scheme for HawkScheme {
+impl HyperScheme for Scheme {
     fn scheme() -> Option<&'static str> {
         Some("Hawk")
     }
@@ -121,15 +121,15 @@ impl Scheme for HawkScheme {
     }
 }
 
-impl fmt::Display for HawkScheme {
+impl fmt::Display for Scheme {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_scheme(f)
     }
 }
 
-impl FromStr for HawkScheme {
+impl FromStr for Scheme {
     type Err = Error;
-    fn from_str(s: &str) -> Result<HawkScheme, Error> {
+    fn from_str(s: &str) -> Result<Scheme, Error> {
         // Check that it starts with "HAWK " (Space not optional)
         if s.len() < 5 || !s[..5].eq_ignore_ascii_case("hawk ") {
             return Err(Error::UnsupportedScheme);
@@ -213,7 +213,7 @@ impl FromStr for HawkScheme {
 
         return match (id, ts, nonce, mac) {
             (Some(id), Some(ts), Some(nonce), Some(mac)) => {
-                Ok(HawkScheme {
+                Ok(Scheme {
                     id: id.to_string(),
                     ts: ts,
                     nonce: nonce.to_string(),
@@ -240,64 +240,64 @@ impl FromStr for HawkScheme {
 
 #[cfg(test)]
 mod test {
-    use super::HawkScheme;
+    use super::Scheme;
     use std::str::FromStr;
     use time::Timespec;
 
     #[test]
     #[should_panic]
     fn illegal_id() {
-        HawkScheme::new("abc\"def", Timespec::new(1234, 0), "nonce", vec![]);
+        Scheme::new("abc\"def", Timespec::new(1234, 0), "nonce", vec![]);
     }
 
     #[test]
     #[should_panic]
     fn illegal_nonce() {
-        HawkScheme::new("abcdef", Timespec::new(1234, 0), "non\"ce", vec![]);
+        Scheme::new("abcdef", Timespec::new(1234, 0), "non\"ce", vec![]);
     }
 
     #[test]
     #[should_panic]
     fn illegal_ext() {
-        HawkScheme::new_extended("abcdef",
-                                 Timespec::new(1234, 0),
-                                 "nonce",
-                                 vec![],
-                                 Some("ex\"t"),
-                                 None,
-                                 None,
-                                 None);
+        Scheme::new_extended("abcdef",
+                             Timespec::new(1234, 0),
+                             "nonce",
+                             vec![],
+                             Some("ex\"t"),
+                             None,
+                             None,
+                             None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_app() {
-        HawkScheme::new_extended("abcdef",
-                                 Timespec::new(1234, 0),
-                                 "nonce",
-                                 vec![],
-                                 None,
-                                 None,
-                                 Some("a\"pp"),
-                                 None);
+        Scheme::new_extended("abcdef",
+                             Timespec::new(1234, 0),
+                             "nonce",
+                             vec![],
+                             None,
+                             None,
+                             Some("a\"pp"),
+                             None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_dlg() {
-        HawkScheme::new_extended("abcdef",
-                                 Timespec::new(1234, 0),
-                                 "nonce",
-                                 vec![],
-                                 None,
-                                 None,
-                                 None,
-                                 Some("d\"lg"));
+        Scheme::new_extended("abcdef",
+                             Timespec::new(1234, 0),
+                             "nonce",
+                             vec![],
+                             None,
+                             None,
+                             None,
+                             Some("d\"lg"));
     }
 
     #[test]
     fn from_str() {
-        let s = HawkScheme::from_str("Hawk id=\"dh37fgj492je\", ts=\"1353832234\", \
+        let s = Scheme::from_str("Hawk id=\"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\", ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
@@ -316,7 +316,7 @@ mod test {
 
     #[test]
     fn from_str_minimal() {
-        let s = HawkScheme::from_str("Hawk id=\"xyz\", ts=\"1353832234\", \
+        let s = Scheme::from_str("Hawk id=\"xyz\", ts=\"1353832234\", \
                                       nonce=\"abc\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
             .unwrap();
@@ -333,7 +333,7 @@ mod test {
 
     #[test]
     fn from_str_messy() {
-        let s = HawkScheme::from_str("Hawk , id  =  \"dh37fgj492je\", ts=\"1353832234\", \
+        let s = Scheme::from_str("Hawk , id  =  \"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
             .unwrap();
@@ -350,12 +350,12 @@ mod test {
 
     #[test]
     fn to_str_minimal() {
-        let s = HawkScheme::new("dh37fgj492je",
-                                Timespec::new(1353832234, 0),
-                                "j4h3g2",
-                                vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176,
-                                     65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66,
-                                     209, 57, 63, 38, 83]);
+        let s = Scheme::new("dh37fgj492je",
+                            Timespec::new(1353832234, 0),
+                            "j4h3g2",
+                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65,
+                                 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57,
+                                 63, 38, 83]);
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -365,16 +365,16 @@ mod test {
 
     #[test]
     fn to_str_maximal() {
-        let s = HawkScheme::new_extended("dh37fgj492je",
-                                         Timespec::new(1353832234, 0),
-                                         "j4h3g2",
-                                         vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43,
-                                              118, 176, 65, 69, 86, 4, 156, 184, 85, 107, 249,
-                                              242, 172, 200, 66, 209, 57, 63, 38, 83],
-                                         Some("my-ext-value"),
-                                         Some(vec![1, 2, 3, 4]),
-                                         Some("my-app"),
-                                         Some("my-dlg"));
+        let s = Scheme::new_extended("dh37fgj492je",
+                                     Timespec::new(1353832234, 0),
+                                     "j4h3g2",
+                                     vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
+                                          176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
+                                          200, 66, 209, 57, 63, 38, 83],
+                                     Some("my-ext-value"),
+                                     Some(vec![1, 2, 3, 4]),
+                                     Some("my-app"),
+                                     Some("my-dlg"));
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -385,19 +385,19 @@ mod test {
 
     #[test]
     fn round_trip() {
-        let s = HawkScheme::new_extended("dh37fgj492je",
-                                         Timespec::new(1353832234, 0),
-                                         "j4h3g2",
-                                         vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43,
-                                              118, 176, 65, 69, 86, 4, 156, 184, 85, 107, 249,
-                                              242, 172, 200, 66, 209, 57, 63, 38, 83],
-                                         Some("my-ext-value"),
-                                         Some(vec![1, 2, 3, 4]),
-                                         Some("my-app"),
-                                         Some("my-dlg"));
+        let s = Scheme::new_extended("dh37fgj492je",
+                                     Timespec::new(1353832234, 0),
+                                     "j4h3g2",
+                                     vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
+                                          176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
+                                          200, 66, 209, 57, 63, 38, 83],
+                                     Some("my-ext-value"),
+                                     Some(vec![1, 2, 3, 4]),
+                                     Some("my-app"),
+                                     Some("my-dlg"));
         let formatted = format!("Hawk {}", s);
         println!("got: {}", formatted);
-        let s2 = HawkScheme::from_str(&formatted).unwrap();
+        let s2 = Scheme::from_str(&formatted).unwrap();
         assert!(s2 == s);
     }
 }

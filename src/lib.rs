@@ -40,7 +40,7 @@ extern crate time;
 extern crate crypto;
 
 mod scheme;
-pub use scheme::HawkScheme;
+pub use scheme::Scheme;
 
 mod request;
 pub use request::{Credentials, Request};
