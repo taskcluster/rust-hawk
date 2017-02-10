@@ -11,6 +11,6 @@ description = "Hawk Implementation for rust using Hyper"
 
 [dependencies]
 hyper = "^0.10.4"
-rust-crypto = "0.2.36"
 rustc-serialize = "^0.3.15"
+ring = "^0.6.3"
 time = "^0.1.32"

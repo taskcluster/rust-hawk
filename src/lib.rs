@@ -9,15 +9,17 @@
 //! extern crate time;
 //! extern crate hawk;
 //! extern crate hyper;
+//! extern crate ring;
 //!
 //! use hawk::Request;
+//! use hawk::SHA256;
 //! use hawk::Credentials;
 //! use hyper::Client;
 //! use hyper::client::IntoUrl;
 //!
 //! fn main() {
 //!     let mut headers = hyper::header::Headers::new();
-//!     let credentials = Credentials::new("test-client", "no-secret", "sha256");
+//!     let credentials = Credentials::new("test-client", "no-secret", &SHA256);
 //!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
 //!                                hyper::Get,
 //!                                credentials,
@@ -34,16 +36,21 @@
 //!         .unwrap();
 //!
 //!     println!("GET -> {}; {}", res.status, res.headers);
+//!     assert!(res.status == hyper::Ok);
 //! }
 //! ```
 
 extern crate hyper;
 extern crate rustc_serialize;
 extern crate time;
-extern crate crypto;
+extern crate ring;
 
 mod scheme;
 pub use scheme::Scheme;
 
 mod request;
 pub use request::{Credentials, Request};
+
+// Hawk does not specify the set of allowable digest algorithsm; this set represents the algorithms
+// currently available from ring.
+pub use ring::digest::{SHA1, SHA256, SHA384, SHA512};

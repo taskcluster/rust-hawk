@@ -1,6 +1,4 @@
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
-use crypto::sha2::Sha256;
+use ring::{digest, hmac};
 use hyper::method::Method;
 use hyper::Url;
 use std::io;
@@ -10,22 +8,23 @@ use time;
 use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
 
-#[derive(Debug)]
+// import the digest algorithms here
+pub use ring::digest::{SHA1, SHA256, SHA384, SHA512};
+
 pub struct Credentials {
     pub id: Vec<u8>,
-    pub key: Vec<u8>,
-    pub algorithm: String,
+    pub key: hmac::SigningKey,
 }
 
 impl Credentials {
-    pub fn new<B, S>(id: B, key: B, algorithm: S) -> Credentials
-        where B: Into<Vec<u8>>,
-              S: Into<String>
+    pub fn new<B>(id: B, key: B, algorithm: &'static digest::Algorithm) -> Credentials
+        where B: Into<Vec<u8>>
     {
+        let key = key.into();
+        let key = hmac::SigningKey::new(algorithm, key.as_ref());
         Credentials {
             id: id.into(),
             key: key.into(),
-            algorithm: algorithm.into(),
         }
     }
 }
@@ -98,14 +97,11 @@ impl Request {
 
         println!("{:?}", String::from_utf8(buffer.clone()).unwrap());
 
-        assert!(self.credentials.algorithm == "sha256"); // TODO
-        let mut hmac = Hmac::new(Sha256::new(), &self.credentials.key);
-        println!("{:?}", buffer);
-        hmac.input(&buffer);
+        let digest = hmac::sign(&self.credentials.key, buffer.as_ref());
 
-        let mut mac = vec![0; hmac.output_bytes()];
-        hmac.raw_result(&mut mac[..]);
-
+        // TODO: store the mac in the header as a Digest
+        let mut mac = vec![0; self.credentials.key.digest_algorithm().output_len];
+        mac.clone_from_slice(digest.as_ref());
         return Ok(mac);
     }
 
