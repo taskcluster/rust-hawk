@@ -29,21 +29,21 @@ impl Credentials {
     }
 }
 
-pub struct Request {
+pub struct Request<'a> {
     url: Url,
     method: Method,
-    credentials: Credentials, // TODO: ref
+    credentials: &'a Credentials,
     ext: Option<String>,
     hash: Option<Vec<u8>>,
     app: Option<String>,
     dlg: Option<String>,
 }
 
-impl Request {
+impl<'a> Request<'a> {
     /// Create a new Request with the given details.
     pub fn new(url: Url,
                method: Method,
-               credentials: Credentials,
+               credentials: &'a Credentials,
                ext: Option<String>,
                hash: Option<Vec<u8>>,
                app: Option<String>,

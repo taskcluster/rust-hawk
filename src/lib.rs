@@ -22,7 +22,7 @@
 //!     let credentials = Credentials::new("test-client", "no-secret", &SHA256);
 //!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
 //!                                hyper::Get,
-//!                                credentials,
+//!                                &credentials,
 //!                                None,
 //!                                None,
 //!                                None,
