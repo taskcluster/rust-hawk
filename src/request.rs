@@ -35,41 +35,39 @@ pub struct Request {
     method: Method,
     credentials: Credentials, // TODO: ref
     ext: Option<String>,
+    hash: Option<Vec<u8>>,
+    app: Option<String>,
+    dlg: Option<String>,
 }
 
 impl Request {
     /// Create a new Request with the given details.
-    pub fn new(url: Url, method: Method, credentials: Credentials, ext: Option<String>) -> Request {
+    pub fn new(url: Url,
+               method: Method,
+               credentials: Credentials,
+               ext: Option<String>,
+               hash: Option<Vec<u8>>,
+               app: Option<String>,
+               dlg: Option<String>)
+               -> Request {
         Request {
             url: url,
             method: method,
             credentials: credentials,
             ext: ext,
+            hash: hash,
+            app: app,
+            dlg: dlg,
         }
     }
 
-    pub fn hyper_scheme(&self) -> Result<Scheme, io::Error> {
-        let id = "id".to_string(); // TODO: random
-        let ts = time::now_utc().to_timespec();
-        let nonce = "nonce".to_string(); // TODO: random
-        let path = self.url.path();
-        let host = match self.url.host_str() {
-            Some(h) => h,
-            None => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("{}", "url has no host")));
-            }
-        };
-        let port = match self.url.port() {
-            Some(p) => p,
-            None => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("{}", "url has no port")));
-            }
-        };
-        let hash: Option<Vec<u8>> = None; // TODO: allow
-        let app = None; // TODO: allow
-        let dlg = None; // TODO: allow
-
-        // write the mac's contents, per the Hawk spec
+    fn make_request_mac(&self,
+                        ts: time::Timespec,
+                        nonce: &String,
+                        path: &str,
+                        host: &str,
+                        port: u16)
+                        -> Result<Vec<u8>, io::Error> {
         let mut buffer: Vec<u8> = vec![];
         try!(write!(buffer, "hawk.1.header\n"));
         try!(write!(buffer, "{}\n", ts.sec));
@@ -80,7 +78,7 @@ impl Request {
         try!(write!(buffer, "{}\n", port));
         try!(write!(buffer,
                     "{}\n",
-                    match hash {
+                    match self.hash {
                         Some(ref h) => {
                             h.to_base64(base64::Config {
                                 char_set: base64::CharacterSet::Standard,
@@ -108,6 +106,40 @@ impl Request {
         let mut mac = vec![0; hmac.output_bytes()];
         hmac.raw_result(&mut mac[..]);
 
-        return Ok(Scheme::new_extended(id, ts, nonce, mac, self.ext.clone(), hash, app, dlg));
+        return Ok(mac);
+    }
+
+    pub fn hyper_scheme(&self) -> Result<Scheme, String> {
+        let id = "id".to_string(); // TODO: random (extern crate rand); move to Request
+        let ts = time::now_utc().to_timespec();
+        let nonce = "nonce".to_string(); // TODO: random
+        let path = self.url.path();
+        let host = match self.url.host_str() {
+            Some(h) => h,
+            None => {
+                return Err(format!("url {} has no host", self.url));
+            }
+        };
+        let port = match self.url.port() {
+            Some(p) => p,
+            None => {
+                return Err(format!("url {} has no port", self.url));
+            }
+        };
+
+        let mac = match self.make_request_mac(ts, &nonce, path, host, port) {
+            Ok(mac) => mac,
+            Err(ioerr) => {
+                return Err(ioerr.to_string());
+            }
+        };
+        return Ok(Scheme::new_extended(id,
+                                       ts,
+                                       nonce,
+                                       mac,
+                                       self.ext.clone(),
+                                       self.hash.clone(),
+                                       self.app.clone(),
+                                       self.dlg.clone()));
     }
 }

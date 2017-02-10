@@ -21,6 +21,9 @@
 //!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
 //!                                hyper::Get,
 //!                                credentials,
+//!                                None,
+//!                                None,
+//!                                None,
 //!                                None);
 //!     headers.set(hyper::header::Authorization(request.hyper_scheme().unwrap()));
 //!
