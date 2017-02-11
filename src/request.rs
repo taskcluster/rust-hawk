@@ -33,10 +33,10 @@ pub struct Request<'a> {
     url: Url,
     method: Method,
     credentials: &'a Credentials,
-    ext: Option<String>,
-    hash: Option<Vec<u8>>,
-    app: Option<String>,
-    dlg: Option<String>,
+    ext: Option<&'a String>,
+    hash: Option<&'a Vec<u8>>,
+    app: Option<&'a String>,
+    dlg: Option<&'a String>,
 }
 
 impl<'a> Request<'a> {
@@ -44,11 +44,11 @@ impl<'a> Request<'a> {
     pub fn new(url: Url,
                method: Method,
                credentials: &'a Credentials,
-               ext: Option<String>,
-               hash: Option<Vec<u8>>,
-               app: Option<String>,
-               dlg: Option<String>)
-               -> Request {
+               ext: Option<&'a String>,
+               hash: Option<&'a Vec<u8>>,
+               app: Option<&'a String>,
+               dlg: Option<&'a String>)
+               -> Request<'a> {
         Request {
             url: url,
             method: method,
@@ -75,25 +75,23 @@ impl<'a> Request<'a> {
         try!(write!(buffer, "{}\n", path));
         try!(write!(buffer, "{}\n", host));
         try!(write!(buffer, "{}\n", port));
-        try!(write!(buffer,
-                    "{}\n",
-                    match self.hash {
-                        Some(ref h) => {
-                            h.to_base64(base64::Config {
-                                char_set: base64::CharacterSet::Standard,
-                                newline: base64::Newline::LF,
-                                pad: true,
-                                line_length: None,
-                            })
-                        }
-                        None => "".to_string(),
-                    }));
-        try!(write!(buffer,
-                    "{}\n",
-                    match self.ext {
-                        Some(ref e) => e,
-                        None => "",
-                    }));
+        if let Some(ref h) = self.hash {
+            try!(write!(buffer,
+                        "{}\n",
+                        h.to_base64(base64::Config {
+                            char_set: base64::CharacterSet::Standard,
+                            newline: base64::Newline::LF,
+                            pad: true,
+                            line_length: None,
+                        })));
+        } else {
+            try!(write!(buffer, "\n"));
+        }
+        if let Some(ref e) = self.ext {
+            try!(write!(buffer, "{}\n", e));
+        } else {
+            try!(write!(buffer, "\n"));
+        }
 
         println!("{:?}", String::from_utf8(buffer.clone()).unwrap());
 
@@ -129,13 +127,27 @@ impl<'a> Request<'a> {
                 return Err(ioerr.to_string());
             }
         };
-        return Ok(Scheme::new_extended(id,
-                                       ts,
-                                       nonce,
-                                       mac,
-                                       self.ext.clone(),
-                                       self.hash.clone(),
-                                       self.app.clone(),
-                                       self.dlg.clone()));
+
+        let ext = match self.ext {
+            Some(ext) => Some(ext.clone()),
+            None => None,
+        };
+
+        let hash = match self.hash {
+            Some(hash) => Some(hash.clone()),
+            None => None,
+        };
+
+        let app = match self.app {
+            Some(app) => Some(app.clone()),
+            None => None,
+        };
+
+        let dlg = match self.dlg {
+            Some(dlg) => Some(dlg.clone()),
+            None => None,
+        };
+
+        return Ok(Scheme::new_extended(id, ts, nonce, mac, ext, hash, app, dlg));
     }
 }
