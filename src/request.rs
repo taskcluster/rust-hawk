@@ -7,18 +7,20 @@ use super::scheme::Scheme;
 use time;
 use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
+use ring::rand;
 
 // import the digest algorithms here
 pub use ring::digest::{SHA1, SHA256, SHA384, SHA512};
 
 pub struct Credentials {
-    pub id: Vec<u8>,
+    pub id: String,
     pub key: hmac::SigningKey,
 }
 
 impl Credentials {
-    pub fn new<B>(id: B, key: B, algorithm: &'static digest::Algorithm) -> Credentials
-        where B: Into<Vec<u8>>
+    pub fn new<S, B>(id: S, key: B, algorithm: &'static digest::Algorithm) -> Credentials
+        where S: Into<String>,
+              B: Into<Vec<u8>>
     {
         let key = key.into();
         let key = hmac::SigningKey::new(algorithm, key.as_ref());
@@ -37,17 +39,20 @@ pub struct Request<'a> {
     hash: Option<&'a Vec<u8>>,
     app: Option<&'a String>,
     dlg: Option<&'a String>,
+    rng: &'a rand::SecureRandom,
 }
 
 impl<'a> Request<'a> {
     /// Create a new Request with the given details.
+    /// TODO: replace with defaults
     pub fn new(url: Url,
                method: Method,
                credentials: &'a Credentials,
                ext: Option<&'a String>,
                hash: Option<&'a Vec<u8>>,
                app: Option<&'a String>,
-               dlg: Option<&'a String>)
+               dlg: Option<&'a String>,
+               rng: &'a rand::SecureRandom)
                -> Request<'a> {
         Request {
             url: url,
@@ -57,9 +62,26 @@ impl<'a> Request<'a> {
             hash: hash,
             app: app,
             dlg: dlg,
+            rng: rng,
         }
     }
 
+    /// Create a random string with `bytes` bytes of entropy.  The string
+    /// is base64-encoded. so it will be longer than bytes characters.
+    fn random_string(&self, bytes: usize) -> Result<String, String> {
+        let mut bytes = vec![0u8; bytes];
+        if let Err(_) = self.rng.fill(&mut bytes) {
+            return Err("Cannot create random string".to_string());
+        }
+        Ok(bytes.to_base64(base64::Config {
+            char_set: base64::CharacterSet::Standard,
+            newline: base64::Newline::LF,
+            pad: true,
+            line_length: None,
+        }))
+    }
+
+    /// Calculate the MAC for a request
     fn make_request_mac(&self,
                         ts: time::Timespec,
                         nonce: &String,
@@ -75,6 +97,7 @@ impl<'a> Request<'a> {
         try!(write!(buffer, "{}\n", path));
         try!(write!(buffer, "{}\n", host));
         try!(write!(buffer, "{}\n", port));
+
         if let Some(ref h) = self.hash {
             try!(write!(buffer,
                         "{}\n",
@@ -87,6 +110,7 @@ impl<'a> Request<'a> {
         } else {
             try!(write!(buffer, "\n"));
         }
+
         if let Some(ref e) = self.ext {
             try!(write!(buffer, "{}\n", e));
         } else {
@@ -104,9 +128,9 @@ impl<'a> Request<'a> {
     }
 
     pub fn hyper_scheme(&self) -> Result<Scheme, String> {
-        let id = "id".to_string(); // TODO: random (extern crate rand); move to Request
+        let id = self.credentials.id.clone();
         let ts = time::now_utc().to_timespec();
-        let nonce = "nonce".to_string(); // TODO: random
+        let nonce = try!(self.random_string(10));
         let path = self.url.path();
         let host = match self.url.host_str() {
             Some(h) => h,

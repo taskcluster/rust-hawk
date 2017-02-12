@@ -14,10 +14,12 @@
 //! use hawk::Request;
 //! use hawk::SHA256;
 //! use hawk::Credentials;
+//! use ring::rand;
 //! use hyper::Client;
 //! use hyper::client::IntoUrl;
 //!
 //! fn main() {
+//!     let rng = ring::rand::SystemRandom::new();
 //!     let mut headers = hyper::header::Headers::new();
 //!     let credentials = Credentials::new("test-client", "no-secret", &SHA256);
 //!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
@@ -26,7 +28,8 @@
 //!                                None,
 //!                                None,
 //!                                None,
-//!                                None);
+//!                                None,
+//!                                &rng);
 //!     headers.set(hyper::header::Authorization(request.hyper_scheme().unwrap()));
 //!
 //!     let client = Client::new();
