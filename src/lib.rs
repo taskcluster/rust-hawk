@@ -12,25 +12,31 @@
 //! extern crate ring;
 //!
 //! use hawk::Request;
-//! use hawk::SHA256;
 //! use hawk::Credentials;
+//! use hawk::Context;
+//! use hawk::Scheme;
+//! use hawk::SHA256;
 //! use ring::rand;
 //! use hyper::Client;
 //! use hyper::client::IntoUrl;
 //!
 //! fn main() {
 //!     let rng = ring::rand::SystemRandom::new();
-//!     let mut headers = hyper::header::Headers::new();
 //!     let credentials = Credentials::new("test-client", "no-secret", &SHA256);
-//!     let request = Request::new("http://localhost:8000/resource".into_url().unwrap(),
-//!                                hyper::Get,
-//!                                &credentials,
-//!                                None,
-//!                                None,
-//!                                None,
-//!                                None,
-//!                                &rng);
-//!     headers.set(hyper::header::Authorization(request.hyper_scheme().unwrap()));
+//!     let context = Context{
+//!         credentials: &credentials,
+//!         rng: &rng,
+//!         app: None,
+//!         dlg: None,
+//!     };
+//!     let mut headers = hyper::header::Headers::new();
+//!     let request = Request{
+//!         context: &context,
+//!         url: "http://localhost:8000/resource",
+//!         method: "GET",
+//!         ext: None,
+//!         hash: None};
+//!     headers.set(hyper::header::Authorization(Scheme::for_request(&request).unwrap()));
 //!
 //!     let client = Client::new();
 //!     let res = client.get("http://localhost:8000/resource")
@@ -47,12 +53,18 @@ extern crate hyper;
 extern crate rustc_serialize;
 extern crate time;
 extern crate ring;
+extern crate url;
 
 mod scheme;
 pub use scheme::Scheme;
 
+mod context;
+pub use context::{Credentials, Context};
+
 mod request;
-pub use request::{Credentials, Request};
+pub use request::Request;
+
+mod util;
 
 // Hawk does not specify the set of allowable digest algorithsm; this set represents the algorithms
 // currently available from ring.

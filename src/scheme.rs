@@ -4,7 +4,9 @@ use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::ascii::AsciiExt;
 use std::fmt;
 use std::str::FromStr;
-use time::Timespec;
+use super::request::Request;
+use super::util::random_string;
+use time;
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,7 +21,7 @@ pub enum Error {
 #[derive(Clone, PartialEq, Debug)]
 pub struct Scheme {
     id: String,
-    ts: Timespec,
+    ts: time::Timespec,
     nonce: String,
     mac: Vec<u8>,
     ext: Option<String>,
@@ -29,6 +31,43 @@ pub struct Scheme {
 }
 
 impl Scheme {
+    /// Create a new Hyper Scheme struct for the given request.
+    pub fn for_request(request: &Request) -> Result<Scheme, String> {
+        let id = request.context.credentials.id.clone();
+        let ts = time::now_utc().to_timespec();
+        let nonce = try!(random_string(request.context.rng, 10));
+
+        let mac = match request.make_request_mac(ts, &nonce) {
+            Ok(mac) => mac,
+            Err(ioerr) => {
+                return Err(ioerr.to_string());
+            }
+        };
+
+        let ext = match request.ext {
+            Some(ext) => Some(ext.clone()),
+            None => None,
+        };
+
+        let hash = match request.hash {
+            Some(hash) => Some(hash.clone()),
+            None => None,
+        };
+
+        let app = match request.context.app {
+            Some(app) => Some(app.clone()),
+            None => None,
+        };
+
+        let dlg = match request.context.dlg {
+            Some(dlg) => Some(dlg.clone()),
+            None => None,
+        };
+
+        return Ok(Scheme::new_extended(id, ts, nonce, mac, ext, hash, app, dlg));
+    }
+
+    /// Check a scheme component for validity.
     fn check_component<S>(value: S) -> String
         where S: Into<String>
     {
@@ -43,7 +82,7 @@ impl Scheme {
     ///
     /// None of the scheme components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
-    pub fn new<S>(id: S, ts: Timespec, nonce: S, mac: Vec<u8>) -> Scheme
+    pub fn new<S>(id: S, ts: time::Timespec, nonce: S, mac: Vec<u8>) -> Scheme
         where S: Into<String>
     {
         Scheme::new_extended(id, ts, nonce, mac, None, None, None, None)
@@ -54,7 +93,7 @@ impl Scheme {
     /// None of the scheme components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
     pub fn new_extended<S>(id: S,
-                           ts: Timespec,
+                           ts: time::Timespec,
                            nonce: S,
                            mac: Vec<u8>,
                            ext: Option<S>,
@@ -139,7 +178,7 @@ impl FromStr for Scheme {
 
         // Required attributes
         let mut id: Option<&str> = None;
-        let mut ts: Option<Timespec> = None;
+        let mut ts: Option<time::Timespec> = None;
         let mut nonce: Option<&str> = None;
         let mut mac: Option<Vec<u8>> = None;
         // Optional attributes
@@ -176,7 +215,7 @@ impl FromStr for Scheme {
                                 "id" => id = Some(val),
                                 "ts" => {
                                     match i64::from_str(val) {
-                                        Ok(sec) => ts = Some(Timespec::new(sec, 0)),
+                                        Ok(sec) => ts = Some(time::Timespec::new(sec, 0)),
                                         Err(_) => return Err(Error::InvalidTimestamp),
                                     };
                                 }
