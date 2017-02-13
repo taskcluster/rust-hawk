@@ -19,61 +19,43 @@ pub struct Request<'a> {
 }
 
 impl<'a> Request<'a> {
-    /// Calculate the MAC for a request
-    pub fn make_request_mac(&self,
-                            ts: time::Timespec,
-                            nonce: &String)
-                            -> Result<Vec<u8>, io::Error> {
-        // TODO: return Result<.., String> use map/map_err
-        let url = match Url::parse(self.url) {
-            Ok(u) => u,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, e));
-            }
-        };
+    /// Calculate the MAC for the request, given the timestamp and nonce
+    pub fn make_mac(&self, ts: time::Timespec, nonce: &String) -> Result<Vec<u8>, String> {
+        let url = try!(Url::parse(self.url).map_err(|err| err.to_string()));
         let path = url.path();
-        let host = match url.host_str() {
-            Some(h) => h,
-            None => {
-                return Err(io::Error::new(io::ErrorKind::Other,
-                                          format!("url {} has no host", url)));
-            }
-        };
-        let port = match url.port() {
-            Some(p) => p,
-            None => {
-                return Err(io::Error::new(io::ErrorKind::Other,
-                                          format!("url {} has no port", url)));
-            }
-        };
+        let host = try!(url.host_str().ok_or(format!("url {} has no host", url)));
+        let port = try!(url.port().ok_or(format!("url {} has no port", url)));
 
         let mut buffer: Vec<u8> = vec![];
-        try!(write!(buffer, "hawk.1.header\n"));
-        try!(write!(buffer, "{}\n", ts.sec));
-        try!(write!(buffer, "{}\n", nonce));
-        try!(write!(buffer, "{}\n", self.method));
-        try!(write!(buffer, "{}\n", path));
-        try!(write!(buffer, "{}\n", host));
-        try!(write!(buffer, "{}\n", port));
+        let fill = |buffer: &mut Vec<u8>| {
+            try!(write!(buffer, "hawk.1.header\n"));
+            try!(write!(buffer, "{}\n", ts.sec));
+            try!(write!(buffer, "{}\n", nonce));
+            try!(write!(buffer, "{}\n", self.method));
+            try!(write!(buffer, "{}\n", path));
+            try!(write!(buffer, "{}\n", host));
+            try!(write!(buffer, "{}\n", port));
 
-        if let Some(ref h) = self.hash {
-            try!(write!(buffer,
-                        "{}\n",
-                        h.to_base64(base64::Config {
-                            char_set: base64::CharacterSet::Standard,
-                            newline: base64::Newline::LF,
-                            pad: true,
-                            line_length: None,
-                        })));
-        } else {
-            try!(write!(buffer, "\n"));
-        }
+            if let Some(ref h) = self.hash {
+                try!(write!(buffer,
+                            "{}\n",
+                            h.to_base64(base64::Config {
+                                char_set: base64::CharacterSet::Standard,
+                                newline: base64::Newline::LF,
+                                pad: true,
+                                line_length: None,
+                            })));
+            } else {
+                try!(write!(buffer, "\n"));
+            }
 
-        if let Some(ref e) = self.ext {
-            try!(write!(buffer, "{}\n", e));
-        } else {
-            try!(write!(buffer, "\n"));
-        }
+            match self.ext {
+                Some(e) => try!(write!(buffer, "{}\n", e)),
+                None => try!(write!(buffer, "\n")),
+            };
+            Ok(())
+        };
+        try!(fill(&mut buffer).map_err(|err: io::Error| err.to_string()));
 
         println!("{:?}", String::from_utf8(buffer.clone()).unwrap());
 

@@ -37,12 +37,7 @@ impl Scheme {
         let ts = time::now_utc().to_timespec();
         let nonce = try!(random_string(request.context.rng, 10));
 
-        let mac = match request.make_request_mac(ts, &nonce) {
-            Ok(mac) => mac,
-            Err(ioerr) => {
-                return Err(ioerr.to_string());
-            }
-        };
+        let mac = try!(request.make_mac(ts, &nonce));
 
         let ext = match request.ext {
             Some(ext) => Some(ext.clone()),
