@@ -18,6 +18,12 @@ pub enum Error {
     Base64DecodeError,
 }
 
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 /// Representation of a Hawk `Authorization` header
 ///
 /// Headers can be created from strings using the `FromStr` trait; the given string
@@ -125,9 +131,10 @@ impl Header {
         }
     }
 
+    // TODO: not public
     /// Return a string containing the contents of the Authorization header.  Note that in contrast
     /// to `FromStr`, the result of this method does not begin with "Hawk".
-    fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let base64_config = base64::Config {
             char_set: base64::CharacterSet::Standard,
             newline: base64::Newline::LF,
