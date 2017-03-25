@@ -16,9 +16,7 @@
 //! use hawk::Context;
 //! use hawk::Scheme;
 //! use hawk::SHA256;
-//! use ring::rand;
 //! use hyper::Client;
-//! use hyper::client::IntoUrl;
 //!
 //! fn main() {
 //!     let rng = ring::rand::SystemRandom::new();
