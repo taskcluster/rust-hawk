@@ -1,6 +1,5 @@
 use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
-use std::ascii::AsciiExt;
 use std::fmt;
 use std::str::FromStr;
 use super::request::Request;
@@ -24,20 +23,19 @@ impl fmt::Display for Error {
     }
 }
 
-/// Representation of a Hawk `Authorization` header
+/// Representation of a Hawk `Authorization` header value.
 ///
-/// Headers can be created from strings using the `FromStr` trait; the given string
-/// must begin with "Hawk".
+/// Note that this does not include the "`Hawk "` prefix.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Header {
-    id: String,
-    ts: time::Timespec,
-    nonce: String,
-    mac: Vec<u8>,
-    ext: Option<String>,
-    hash: Option<Vec<u8>>,
-    app: Option<String>,
-    dlg: Option<String>,
+    pub id: String,
+    pub ts: time::Timespec,
+    pub nonce: String,
+    pub mac: Vec<u8>,
+    pub ext: Option<String>,
+    pub hash: Option<Vec<u8>>,
+    pub app: Option<String>,
+    pub dlg: Option<String>,
 }
 
 impl Header {
@@ -132,8 +130,7 @@ impl Header {
     }
 
     // TODO: not public
-    /// Return a string containing the contents of the Authorization header.  Note that in contrast
-    /// to `FromStr`, the result of this method does not begin with "Hawk".
+    /// Return a string containing the contents of the Authorization header.
     pub fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let base64_config = base64::Config {
             char_set: base64::CharacterSet::Standard,
@@ -173,12 +170,7 @@ impl fmt::Display for Header {
 impl FromStr for Header {
     type Err = Error;
     fn from_str(s: &str) -> Result<Header, Error> {
-        // Check that it starts with "HAWK " (Space not optional)
-        if s.len() < 5 || !s[..5].eq_ignore_ascii_case("hawk ") {
-            return Err(Error::UnsupportedScheme);
-        }
-
-        let mut p = &s[4..];
+        let mut p = &s[..];
 
         // Required attributes
         let mut id: Option<&str> = None;
@@ -355,7 +347,7 @@ mod test {
 
     #[test]
     fn from_str() {
-        let s = Header::from_str("Hawk id=\"dh37fgj492je\", ts=\"1353832234\", \
+        let s = Header::from_str("id=\"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\", ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
@@ -374,7 +366,7 @@ mod test {
 
     #[test]
     fn from_str_minimal() {
-        let s = Header::from_str("Hawk id=\"xyz\", ts=\"1353832234\", \
+        let s = Header::from_str("id=\"xyz\", ts=\"1353832234\", \
                                       nonce=\"abc\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
             .unwrap();
@@ -391,7 +383,7 @@ mod test {
 
     #[test]
     fn from_str_messy() {
-        let s = Header::from_str("Hawk , id  =  \"dh37fgj492je\", ts=\"1353832234\", \
+        let s = Header::from_str(", id  =  \"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
             .unwrap();
@@ -453,8 +445,8 @@ mod test {
                                      Some(vec![1, 2, 3, 4]),
                                      Some("my-app"),
                                      Some("my-dlg"));
-        let formatted = format!("Hawk {}", s);
-        println!("got: {}", formatted);
+        let formatted = format!("{}", s);
+        println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();
         assert!(s2 == s);
     }
