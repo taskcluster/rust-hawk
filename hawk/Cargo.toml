@@ -9,6 +9,9 @@ documentation = "https://github.com/taskcluster/rust-hawk"
 homepage = "https://github.com/taskcluster/rust-hawk"
 description = "Hawk Implementation for Rust"
 
+[dev-dependencies]
+pretty_assertions = "^0.1.2"
+
 [dependencies]
 rustc-serialize = "^0.3.15"
 ring = "^0.6.3"

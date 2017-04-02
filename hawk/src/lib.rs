@@ -49,6 +49,10 @@ extern crate time;
 extern crate ring;
 extern crate url;
 
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+
 mod header;
 pub use header::Header;
 
