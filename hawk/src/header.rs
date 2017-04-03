@@ -2,7 +2,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::fmt;
 use std::str::FromStr;
-use ring::hmac;
+use ring::{hmac, constant_time};
 use mac::make_mac;
 use time;
 
@@ -104,8 +104,12 @@ impl Header {
             match self.hash { None => None, Some(ref v) => Some(v) },
             match self.ext {None => None, Some(ref s) => Some(s) },
         ) {
-            // TODO: fixed-time comparison
-            Ok(calculated_mac) => calculated_mac == self.mac,
+            Ok(calculated_mac) => {
+                match constant_time::verify_slices_are_equal(&calculated_mac[..], &self.mac[..]) {
+                    Ok(_) => true,
+                    Err(_) => false,
+                }
+            },
             Err(_) => false,
         }
 
