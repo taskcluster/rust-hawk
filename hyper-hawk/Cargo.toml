@@ -10,9 +10,9 @@ homepage = "https://github.com/taskcluster/rust-hawk"
 description = "Hawk Implementation for rust using Hyper"
 
 [dependencies]
+url = "1.4.0"
 hyper = "^0.10.4"
 rustc-serialize = "^0.3.15"
-ring = "^0.6.3"
+ring = "^0.7.3"
 time = "^0.1.32"
-url = "1.4.0"
 hawk = { path = "../hawk" }

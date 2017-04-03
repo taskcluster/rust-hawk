@@ -1,46 +1,35 @@
 use hyper::header::Scheme as HyperScheme;
 use std::str::FromStr;
 use std::fmt;
-use time;
-use ring::{hmac, rand};
-use hawk::{Request, Header, Context, Credentials};
+use ring::hmac;
+use hawk::Header;
+use std::ops::Deref;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Scheme(pub Header);
 
+/// Scheme is a Hyper Scheme implementation for Hawk Authorization headers.
+///
+/// The Scheme type dereferences to a Hawk Header, allowing access to all members and methods of
+/// that type.
 impl Scheme {
-    fn id(&self) -> &String {
-        &self.0.id
-    }
-
-    /// Validate the header was generated with the given key.
-    pub fn validate(&self, credentials: &Credentials, hostname: &str, port: u16, path: &str, method: &str) -> Result<(), String> {
-        // TODO: validate hash against body?
-        let rng = rand::SystemRandom::new();
-        let context = Context{
-            credentials: &credentials,
-            rng: &rng,
-            app: None,
-            dlg: None,
-        };
-        let req = Request{
-            context: &context,
-            url: &format!("https://{}:{}{}", hostname, port, path)[..],
-            method: method,
-            ext: None, // XXX
-            hash: None, // XXX
-        };
-        match req.make_mac(self.0.ts, &self.0.nonce) {
-            Err(e) => Err(e),
-            Ok(mac) => {
-                println!("Server calculated MAC: {:?}", mac);
-                if mac == self.0.mac {
-                Ok(())
-            } else {
-                Err("Bad MAC".to_string())
-            }
-            }
+    /// Validate the header was generated with the given key.  Returns nothing if the header is OK,
+    /// otherwise returning an error message.
+    pub fn validate(&self, key: &hmac::SigningKey, hostname: &str, port: u16, path: &str, method: &str) -> Result<(), String> {
+        if !self.0.validate_mac(key, method, path, hostname, port) {
+            // this is deliberately brief, to avoid leaking information that might be useful
+            // in attacking the MAC algorithm
+            return Err("Bad MAC".to_string())
         }
+        Ok(())
+    }
+}
+
+impl Deref for Scheme {
+    type Target = Header;
+
+    fn deref(&self) -> &Header {
+        &self.0
     }
 }
 

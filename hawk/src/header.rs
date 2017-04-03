@@ -2,9 +2,9 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::fmt;
 use std::str::FromStr;
-use super::request::Request;
+use ring::hmac;
+use mac::make_mac;
 use time;
-use ring::rand;
 
 // TODO: use string errors
 #[derive(Debug)]
@@ -39,73 +39,19 @@ pub struct Header {
 }
 
 impl Header {
-    /// Create a new Header for the given request, automatically calculating
-    /// the MAC and adding fields from the Context.
-    pub fn for_request(request: &Request) -> Result<Header, String> {
-        let id = request.context.credentials.id.clone();
-        let ts = time::now_utc().to_timespec();
-        let nonce = try!(random_string(request.context.rng, 10));
-
-        let mac = try!(request.make_mac(ts, &nonce));
-
-        let ext = match request.ext {
-            Some(ext) => Some(ext.clone()),
-            None => None,
-        };
-
-        let hash = match request.hash {
-            Some(hash) => Some(hash.clone()),
-            None => None,
-        };
-
-        let app = match request.context.app {
-            Some(app) => Some(app.clone()),
-            None => None,
-        };
-
-        let dlg = match request.context.dlg {
-            Some(dlg) => Some(dlg.clone()),
-            None => None,
-        };
-
-        return Ok(Header::new_extended(id, ts, nonce, mac, ext, hash, app, dlg));
-    }
-
-    /// Check a header component for validity.
-    fn check_component<S>(value: S) -> String
-        where S: Into<String>
-    {
-        // TODO: only do this in debug builds?
-        let value = value.into();
-        if value.contains("\"") {
-            panic!("Hawk header components cannot contain `\"`");
-        }
-        value
-    }
-
-    /// Create a new Header with the basic fields.  This is a low-level function.
-    ///
-    /// None of the header components can contain the character `\"`.  This function will panic
-    /// if any such characters appear.
-    pub fn new<S>(id: S, ts: time::Timespec, nonce: S, mac: Vec<u8>) -> Header
-        where S: Into<String>
-    {
-        Header::new_extended(id, ts, nonce, mac, None, None, None, None)
-    }
-
     /// Create a new Header with the full set of Hawk fields.  This is a low-level funtion.
     ///
     /// None of the header components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
-    pub fn new_extended<S>(id: S,
-                           ts: time::Timespec,
-                           nonce: S,
-                           mac: Vec<u8>,
-                           ext: Option<S>,
-                           hash: Option<Vec<u8>>,
-                           app: Option<S>,
-                           dlg: Option<S>)
-                           -> Header
+    pub fn new<S>(id: S,
+                  ts: time::Timespec,
+                  nonce: S,
+                  mac: Vec<u8>,
+                  ext: Option<S>,
+                  hash: Option<Vec<u8>>,
+                  app: Option<S>,
+                  dlg: Option<S>)
+                  -> Header
         where S: Into<String>
     {
         Header {
@@ -129,8 +75,56 @@ impl Header {
         }
     }
 
-    // TODO: not public
-    /// Return a string containing the contents of the Authorization header.
+    /// Validate that the header's MAC field matches that calculated using the other header fields
+    /// and the given request information.
+    ///
+    /// It is up to the caller to examine the header's `id` field and supply the corresponding key.
+    ///
+    /// Note that this is not a complete validation of a request!  It is still up to the caller to
+    /// validate the accuracy of the header information.  Notably:
+    ///
+    ///  * `ts` is within a reasonable skew (the JS implementation suggests +/- one minute)
+    ///  * `nonce` has not been used before (optional)
+    ///  * `hash` is the correct hash for the content
+    pub fn validate_mac(&self,
+                    key: &hmac::SigningKey,
+                    method: &str,
+                    path: &str,
+                    host: &str,
+                    port: u16) -> bool
+    {
+        match make_mac(
+            key,
+            self.ts,
+            &self.nonce,
+            method,
+            path,
+            host,
+            port,
+            match self.hash { None => None, Some(ref v) => Some(v) },
+            match self.ext {None => None, Some(ref s) => Some(s) },
+        ) {
+            // TODO: fixed-time comparison
+            Ok(calculated_mac) => calculated_mac == self.mac,
+            Err(_) => false,
+        }
+
+    }
+
+    /// Check a header component for validity.
+    fn check_component<S>(value: S) -> String
+        where S: Into<String>
+    {
+        // TODO: only do this in debug builds?
+        let value = value.into();
+        if value.contains("\"") {
+            panic!("Hawk header components cannot contain `\"`");
+        }
+        value
+    }
+
+    /// Format the header for transmission in an Authorization header, omitting the `"Hawk "`
+    /// prefix.
     pub fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let base64_config = base64::Config {
             char_set: base64::CharacterSet::Standard,
@@ -273,76 +267,83 @@ impl FromStr for Header {
     }
 }
 
-/// Create a random string with `bytes` bytes of entropy.  The string
-/// is base64-encoded. so it will be longer than bytes characters.
-fn random_string(rng: &rand::SecureRandom, bytes: usize) -> Result<String, String> {
-    let mut bytes = vec![0u8; bytes];
-    if let Err(_) = rng.fill(&mut bytes) {
-        return Err("Cannot create random string".to_string());
-    }
-    Ok(bytes.to_base64(base64::Config {
-        char_set: base64::CharacterSet::Standard,
-        newline: base64::Newline::LF,
-        pad: true,
-        line_length: None,
-    }))
-}
-
 #[cfg(test)]
 mod test {
     use super::Header;
     use std::str::FromStr;
     use time::Timespec;
+    use request::Request;
+    use credentials::Credentials;
+    use ring::digest;
+
+    // this is a header from a real request using the JS Hawk library, to https://pulse.taskcluster.net:443/v1/namespaces
+    // with credentials "me" / "tok"
+    const REAL_HEADER: &'static str =
+        "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
 
     #[test]
     #[should_panic]
     fn illegal_id() {
-        Header::new("abc\"def", Timespec::new(1234, 0), "nonce", vec![]);
+        Header::new("ab\"cdef",
+                    Timespec::new(1234, 0),
+                    "nonce",
+                    vec![],
+                    Some("ext"),
+                    None,
+                    None,
+                    None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_nonce() {
-        Header::new("abcdef", Timespec::new(1234, 0), "non\"ce", vec![]);
+        Header::new("abcdef",
+                    Timespec::new(1234, 0),
+                    "no\"nce",
+                    vec![],
+                    Some("ext"),
+                    None,
+                    None,
+                    None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_ext() {
-        Header::new_extended("abcdef",
-                             Timespec::new(1234, 0),
-                             "nonce",
-                             vec![],
-                             Some("ex\"t"),
-                             None,
-                             None,
-                             None);
+        Header::new("abcdef",
+                    Timespec::new(1234, 0),
+                    "nonce",
+                    vec![],
+                    Some("ex\"t"),
+                    None,
+                    None,
+                    None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_app() {
-        Header::new_extended("abcdef",
-                             Timespec::new(1234, 0),
-                             "nonce",
-                             vec![],
-                             None,
-                             None,
-                             Some("a\"pp"),
-                             None);
+        Header::new("abcdef",
+                    Timespec::new(1234, 0),
+                    "nonce",
+                    vec![],
+                    None,
+                    None,
+                    Some("a\"pp"),
+                    None);
     }
 
     #[test]
     #[should_panic]
     fn illegal_dlg() {
-        Header::new_extended("abcdef",
-                             Timespec::new(1234, 0),
-                             "nonce",
-                             vec![],
-                             None,
-                             None,
-                             None,
-                             Some("d\"lg"));
+        Header::new("abcdef",
+                    Timespec::new(1234, 0),
+                    "nonce",
+                    vec![],
+                    None,
+                    None,
+                    None,
+                    Some("d\"lg"));
     }
 
     #[test]
@@ -405,7 +406,8 @@ mod test {
                             "j4h3g2",
                             vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65,
                                  69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57,
-                                 63, 38, 83]);
+                                 63, 38, 83],
+                             None, None, None, None);
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -415,16 +417,16 @@ mod test {
 
     #[test]
     fn to_str_maximal() {
-        let s = Header::new_extended("dh37fgj492je",
-                                     Timespec::new(1353832234, 0),
-                                     "j4h3g2",
-                                     vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                          176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
-                                          200, 66, 209, 57, 63, 38, 83],
-                                     Some("my-ext-value"),
-                                     Some(vec![1, 2, 3, 4]),
-                                     Some("my-app"),
-                                     Some("my-dlg"));
+        let s = Header::new("dh37fgj492je",
+                            Timespec::new(1353832234, 0),
+                            "j4h3g2",
+                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
+                                 176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
+                                 200, 66, 209, 57, 63, 38, 83],
+                            Some("my-ext-value"),
+                            Some(vec![1, 2, 3, 4]),
+                            Some("my-app"),
+                            Some("my-dlg"));
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -435,19 +437,52 @@ mod test {
 
     #[test]
     fn round_trip() {
-        let s = Header::new_extended("dh37fgj492je",
-                                     Timespec::new(1353832234, 0),
-                                     "j4h3g2",
-                                     vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                          176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
-                                          200, 66, 209, 57, 63, 38, 83],
-                                     Some("my-ext-value"),
-                                     Some(vec![1, 2, 3, 4]),
-                                     Some("my-app"),
-                                     Some("my-dlg"));
+        let s = Header::new("dh37fgj492je",
+                            Timespec::new(1353832234, 0),
+                            "j4h3g2",
+                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
+                                 176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
+                                 200, 66, 209, 57, 63, 38, 83],
+                            Some("my-ext-value"),
+                            Some(vec![1, 2, 3, 4]),
+                            Some("my-app"),
+                            Some("my-dlg"));
         let formatted = format!("{}", s);
         println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();
         assert!(s2 == s);
+    }
+
+    #[test]
+    fn test_validate_matches_generated() {
+        let req = Request::new()
+            .method("GET")
+            .path("/foo")
+            .host("example.com")
+            .port(443);
+        let credentials = Credentials::new("me", vec![99u8; 32], &digest::SHA256);
+        let header = req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string()).unwrap();
+        assert!(header.validate_mac(&credentials.key, "GET", "/foo", "example.com", 443));
+    }
+
+    #[test]
+    fn test_validate_real_request() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials::new("me", "tok", &digest::SHA256);
+        assert!(header.validate_mac(&credentials.key, "GET", "/v1/namespaces", "pulse.taskcluster.net", 443));
+    }
+
+    #[test]
+    fn test_validate_real_request_bad_creds() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials::new("me", "WRONG", &digest::SHA256);
+        assert!(!header.validate_mac(&credentials.key, "GET", "/v1/namespaces", "pulse.taskcluster.net", 443));
+    }
+
+    #[test]
+    fn test_validate_real_request_bad_req_info() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials::new("me", "tok", &digest::SHA256);
+        assert!(!header.validate_mac(&credentials.key, "GET", "/v1/WRONGPATH", "pulse.taskcluster.net", 443));
     }
 }

@@ -5,42 +5,31 @@
 //! ## Hawk Client
 //!
 //! ```
+//! #[macro_use] extern crate pretty_assertions;
 //! extern crate time;
 //! extern crate hawk;
 //! extern crate ring;
 //!
-//! use hawk::Request;
-//! use hawk::Credentials;
-//! use hawk::Context;
-//! use hawk::Header;
-//! use ring::digest::SHA256;
+//! use hawk::{Request, Credentials, SHA256};
 //! use ring::rand;
 //!
 //! fn main() {
 //!     let rng = rand::SystemRandom::new();
 //!     // provide the Hawk id and key
-//!     let credentials = Credentials::new("test-client", "no-secret", &SHA256);
-//!     // provide some context that might span multple requests
-//!     let context = Context{
-//!         credentials: &credentials,
-//!         rng: &rng,
-//!         app: None,
-//!         dlg: None,
-//!     };
-//!     // and finally, provide the details of the request to be authorized
-//!     let request = Request{
-//!         context: &context,
-//!         url: "http://localhost:8000/resource",
-//!         method: "GET",
-//!         ext: None,
-//!         hash: None};
+//!     let credentials = Credentials::new("test-client", vec![99u8; 32], &SHA256);
 //!
-//!     // get the resulting header, including the calculated MAC
-//!     let header = Header::for_request(&request).unwrap();
-//!     let header = format!("{}", header);
-//!     println!("{}", header);
-//!     assert!(header.starts_with("id="));
-//!     assert!(header.contains("mac="));
+//!     // and finally, provide the details of the request to be authorized
+//!     let request = Request::new()
+//!         .method("GET")
+//!         .host("example.com")
+//!         .port(80)
+//!         .path("/v1/users");
+//!
+//!     // Get the resulting header, including the calculated MAC; this involves a random
+//!     // nonce, so the MAC will be different on every request.
+//!     let header = request.generate_header(&rng, &credentials).unwrap();
+//!     assert_eq!(header.id, "test-client");
+//!     assert_eq!(header.mac.len(), 32);
 //! }
 //!
 //! ```
@@ -56,8 +45,13 @@ extern crate pretty_assertions;
 mod header;
 pub use header::Header;
 
-mod context;
-pub use context::{Credentials, Context};
+mod credentials;
+pub use credentials::Credentials;
 
 mod request;
 pub use request::Request;
+
+mod mac;
+
+// convenience imports
+pub use ring::digest::{SHA256,SHA384,SHA512};
