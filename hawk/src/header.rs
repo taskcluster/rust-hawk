@@ -6,23 +6,6 @@ use ring::{hmac, constant_time};
 use mac::make_mac;
 use time;
 
-// TODO: use string errors
-#[derive(Debug)]
-pub enum Error {
-    UnsupportedScheme,
-    SchemeParseError,
-    MissingAttributes,
-    UnknownAttribute,
-    InvalidTimestamp,
-    Base64DecodeError,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
 /// Representation of a Hawk `Authorization` header value.
 ///
 /// Note that this does not include the "`Hawk "` prefix.
@@ -165,8 +148,8 @@ impl fmt::Display for Header {
 }
 
 impl FromStr for Header {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Header, Error> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Header, String> {
         let mut p = &s[..];
 
         // Required attributes
@@ -190,11 +173,11 @@ impl FromStr for Header {
                 Some(v) => {
                     let attr = &p[..v].trim();
                     if p.len() < v + 1 {
-                        return Err(Error::SchemeParseError);
+                        return Err("SchemeParseError".to_string());
                     }
                     p = (&p[v + 1..]).trim_left();
                     if !p.starts_with("\"") {
-                        return Err(Error::SchemeParseError);
+                        return Err("SchemeParseError".to_string());
                     }
                     p = &p[1..];
                     // We have poor RFC 7235 compliance here as we ought to support backslash
@@ -209,13 +192,13 @@ impl FromStr for Header {
                                 "ts" => {
                                     match i64::from_str(val) {
                                         Ok(sec) => ts = Some(time::Timespec::new(sec, 0)),
-                                        Err(_) => return Err(Error::InvalidTimestamp),
+                                        Err(_) => return Err("InvalidTimestamp".to_string()),
                                     };
                                 }
                                 "mac" => {
                                     match val.from_base64() {
                                         Ok(v) => mac = Some(v),
-                                        Err(_) => return Err(Error::Base64DecodeError),
+                                        Err(_) => return Err("Base64DecodeError".to_string()),
                                     }
                                 }
                                 "nonce" => nonce = Some(val),
@@ -223,12 +206,12 @@ impl FromStr for Header {
                                 "hash" => {
                                     match val.from_base64() {
                                         Ok(v) => hash = Some(v),
-                                        Err(_) => return Err(Error::Base64DecodeError),
+                                        Err(_) => return Err("Base64DecodeError".to_string()),
                                     }
                                 }
                                 "app" => app = Some(val),
                                 "dlg" => dlg = Some(val),
-                                _ => return Err(Error::UnknownAttribute),
+                                _ => return Err("UnknownAttribute".to_string()),
                             };
                             // Break if we are at end of string, otherwise skip separator
                             if p.len() < v + 1 {
@@ -236,10 +219,10 @@ impl FromStr for Header {
                             }
                             p = &p[v + 1..].trim_left();
                         }
-                        None => return Err(Error::SchemeParseError),
+                        None => return Err("SchemeParseError".to_string()),
                     }
                 }
-                None => return Err(Error::SchemeParseError),
+                None => return Err("SchemeParseError".to_string()),
             };
         }
 
@@ -265,7 +248,7 @@ impl FromStr for Header {
                     },
                 })
             }
-            _ => Err(Error::MissingAttributes),
+            _ => Err("MissingAttributes".to_string()),
         };
     }
 }
