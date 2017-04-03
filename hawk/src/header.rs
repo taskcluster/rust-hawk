@@ -115,7 +115,6 @@ impl Header {
     fn check_component<S>(value: S) -> String
         where S: Into<String>
     {
-        // TODO: only do this in debug builds?
         let value = value.into();
         if value.contains("\"") {
             panic!("Hawk header components cannot contain `\"`");
