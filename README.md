@@ -7,6 +7,9 @@ This is a Rust implementation of [Hawk](https://github.com/hueniverse/hawk).
 
 This is a work-in-progress.
 
+* Meta
+  * Put request parameters in the same order everywhere (method / host / port / path)
+
 * Protocol Fidelity
   * bidirectional support (server validation); requires
     * nonstandard "Server-Authorization" header

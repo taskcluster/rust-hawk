@@ -7,6 +7,7 @@ use header::Header;
 use credentials::Credentials;
 use rand;
 use rand::Rng;
+use error::HawkError;
 
 static EMPTY_STRING: &'static str = "";
 
@@ -77,10 +78,12 @@ impl<'a> Request<'a> {
     }
 
     /// Set the hostname, port, and path for the request, from a string URL.
-    pub fn url(self, url: &'a Url) -> Result<Self, String> {
+    pub fn url(self, url: &'a Url) -> Result<Self, HawkError> {
         let path = url.path();
-        let host = try!(url.host_str().ok_or(format!("url {} has no host", url)));
-        let port = try!(url.port_or_known_default().ok_or(format!("url {} has no port", url)));
+        let host = try!(url.host_str()
+                        .ok_or(HawkError::UrlError(format!("url {} has no host", url))));
+        let port = try!(url.port_or_known_default()
+                        .ok_or(HawkError::UrlError(format!("url {} has no port", url))));
         Ok(self.path(path).host(host).port(port))
     }
 
@@ -110,7 +113,7 @@ impl<'a> Request<'a> {
 
     /// Create a new Header for this request, inventing a new nonce and setting the
     /// timestamp to the current time.
-    pub fn generate_header(&self, credentials: &Credentials) -> Result<Header, String> {
+    pub fn generate_header(&self, credentials: &Credentials) -> Result<Header, HawkError> {
         let nonce = random_string(10);
         self.generate_header_full(credentials, time::now().to_timespec(), nonce)
     }
@@ -121,7 +124,7 @@ impl<'a> Request<'a> {
                                 credentials: &Credentials,
                                 ts: time::Timespec,
                                 nonce: String)
-                                -> Result<Header, String> {
+                                -> Result<Header, HawkError> {
         let hash_vec;
         let hash = match self.hash {
             None => None,

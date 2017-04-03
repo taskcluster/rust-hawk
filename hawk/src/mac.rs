@@ -1,8 +1,8 @@
 use credentials::Key;
-use std::io;
 use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
 use std::io::Write;
+use error::HawkError;
 use time;
 
 pub fn make_mac(key: &Key,
@@ -14,37 +14,34 @@ pub fn make_mac(key: &Key,
                 path: &str,
                 hash: Option<&Vec<u8>>,
                 ext: Option<&str>)
-                -> Result<Vec<u8>, String> {
+                -> Result<Vec<u8>, HawkError> {
     let mut buffer: Vec<u8> = vec![];
-    let fill = |buffer: &mut Vec<u8>| {
-        try!(write!(buffer, "hawk.1.header\n"));
-        try!(write!(buffer, "{}\n", ts.sec));
-        try!(write!(buffer, "{}\n", nonce));
-        try!(write!(buffer, "{}\n", method));
-        try!(write!(buffer, "{}\n", path));
-        try!(write!(buffer, "{}\n", host));
-        try!(write!(buffer, "{}\n", port));
 
-        if let Some(ref h) = hash {
-            try!(write!(buffer,
-                        "{}\n",
-                        h.to_base64(base64::Config {
-                            char_set: base64::CharacterSet::Standard,
-                            newline: base64::Newline::LF,
-                            pad: true,
-                            line_length: None,
-                        })));
-        } else {
-            try!(write!(buffer, "\n"));
-        }
+    try!(write!(buffer, "hawk.1.header\n"));
+    try!(write!(buffer, "{}\n", ts.sec));
+    try!(write!(buffer, "{}\n", nonce));
+    try!(write!(buffer, "{}\n", method));
+    try!(write!(buffer, "{}\n", path));
+    try!(write!(buffer, "{}\n", host));
+    try!(write!(buffer, "{}\n", port));
 
-        match ext {
-            Some(ref e) => try!(write!(buffer, "{}\n", e)),
-            None => try!(write!(buffer, "\n")),
-        };
-        Ok(())
+    if let Some(ref h) = hash {
+        try!(write!(buffer,
+                    "{}\n",
+                    h.to_base64(base64::Config {
+                        char_set: base64::CharacterSet::Standard,
+                        newline: base64::Newline::LF,
+                        pad: true,
+                        line_length: None,
+                    })));
+    } else {
+        try!(write!(buffer, "\n"));
+    }
+
+    match ext {
+        Some(ref e) => try!(write!(buffer, "{}\n", e)),
+        None => try!(write!(buffer, "\n")),
     };
-    try!(fill(&mut buffer).map_err(|err: io::Error| err.to_string()));
 
     return Ok(key.sign(buffer.as_ref()));
 }

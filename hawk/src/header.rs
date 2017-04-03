@@ -5,6 +5,7 @@ use std::str::FromStr;
 use ring::constant_time;
 use mac::make_mac;
 use credentials::Key;
+use error::HawkError;
 use time;
 
 /// Representation of a Hawk `Authorization` header value.
@@ -173,8 +174,8 @@ impl fmt::Display for Header {
 }
 
 impl FromStr for Header {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Header, String> {
+    type Err = HawkError;
+    fn from_str(s: &str) -> Result<Header, HawkError> {
         let mut p = &s[..];
 
         // Required attributes
@@ -198,11 +199,11 @@ impl FromStr for Header {
                 Some(v) => {
                     let attr = &p[..v].trim();
                     if p.len() < v + 1 {
-                        return Err("SchemeParseError".to_string());
+                        return Err(HawkError::HeaderParseError);
                     }
                     p = (&p[v + 1..]).trim_left();
                     if !p.starts_with("\"") {
-                        return Err("SchemeParseError".to_string());
+                        return Err(HawkError::HeaderParseError);
                     }
                     p = &p[1..];
                     // We have poor RFC 7235 compliance here as we ought to support backslash
@@ -217,13 +218,13 @@ impl FromStr for Header {
                                 "ts" => {
                                     match i64::from_str(val) {
                                         Ok(sec) => ts = Some(time::Timespec::new(sec, 0)),
-                                        Err(_) => return Err("InvalidTimestamp".to_string()),
+                                        Err(_) => return Err(HawkError::InvalidTimestamp),
                                     };
                                 }
                                 "mac" => {
                                     match val.from_base64() {
                                         Ok(v) => mac = Some(v),
-                                        Err(_) => return Err("Base64DecodeError".to_string()),
+                                        Err(_) => return Err(HawkError::Base64DecodeError),
                                     }
                                 }
                                 "nonce" => nonce = Some(val),
@@ -231,12 +232,12 @@ impl FromStr for Header {
                                 "hash" => {
                                     match val.from_base64() {
                                         Ok(v) => hash = Some(v),
-                                        Err(_) => return Err("Base64DecodeError".to_string()),
+                                        Err(_) => return Err(HawkError::Base64DecodeError),
                                     }
                                 }
                                 "app" => app = Some(val),
                                 "dlg" => dlg = Some(val),
-                                _ => return Err("UnknownAttribute".to_string()),
+                                _ => return Err(HawkError::UnknownAttribute),
                             };
                             // Break if we are at end of string, otherwise skip separator
                             if p.len() < v + 1 {
@@ -244,10 +245,10 @@ impl FromStr for Header {
                             }
                             p = &p[v + 1..].trim_left();
                         }
-                        None => return Err("SchemeParseError".to_string()),
+                        None => return Err(HawkError::HeaderParseError),
                     }
                 }
-                None => return Err("SchemeParseError".to_string()),
+                None => return Err(HawkError::HeaderParseError),
             };
         }
 
@@ -273,7 +274,7 @@ impl FromStr for Header {
                     },
                 })
             }
-            _ => Err("MissingAttributes".to_string()),
+            _ => Err(HawkError::MissingAttributes),
         };
     }
 }

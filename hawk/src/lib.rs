@@ -53,6 +53,9 @@ pub use credentials::{Credentials, Key};
 mod request;
 pub use request::Request;
 
+mod error;
+pub use error::HawkError;
+
 mod mac;
 
 // convenience imports
