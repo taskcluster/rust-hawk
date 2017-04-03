@@ -17,30 +17,30 @@ pub fn make_mac(key: &Key,
                 -> Result<Vec<u8>, HawkError> {
     let mut buffer: Vec<u8> = vec![];
 
-    try!(write!(buffer, "hawk.1.header\n"));
-    try!(write!(buffer, "{}\n", ts.sec));
-    try!(write!(buffer, "{}\n", nonce));
-    try!(write!(buffer, "{}\n", method));
-    try!(write!(buffer, "{}\n", path));
-    try!(write!(buffer, "{}\n", host));
-    try!(write!(buffer, "{}\n", port));
+    write!(buffer, "hawk.1.header\n")?;
+    write!(buffer, "{}\n", ts.sec)?;
+    write!(buffer, "{}\n", nonce)?;
+    write!(buffer, "{}\n", method)?;
+    write!(buffer, "{}\n", path)?;
+    write!(buffer, "{}\n", host)?;
+    write!(buffer, "{}\n", port)?;
 
     if let Some(ref h) = hash {
-        try!(write!(buffer,
+        write!(buffer,
                     "{}\n",
                     h.to_base64(base64::Config {
                         char_set: base64::CharacterSet::Standard,
                         newline: base64::Newline::LF,
                         pad: true,
                         line_length: None,
-                    })));
+                    }))?;
     } else {
-        try!(write!(buffer, "\n"));
+        write!(buffer, "\n")?;
     }
 
     match ext {
-        Some(ref e) => try!(write!(buffer, "{}\n", e)),
-        None => try!(write!(buffer, "\n")),
+        Some(ref e) => write!(buffer, "{}\n", e)?,
+        None => write!(buffer, "\n")?,
     };
 
     return Ok(key.sign(buffer.as_ref()));

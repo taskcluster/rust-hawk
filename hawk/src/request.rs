@@ -80,10 +80,10 @@ impl<'a> Request<'a> {
     /// Set the hostname, port, and path for the request, from a string URL.
     pub fn url(self, url: &'a Url) -> Result<Self, HawkError> {
         let path = url.path();
-        let host = try!(url.host_str()
-                        .ok_or(HawkError::UrlError(format!("url {} has no host", url))));
-        let port = try!(url.port_or_known_default()
-                        .ok_or(HawkError::UrlError(format!("url {} has no port", url))));
+        let host = url.host_str()
+                        .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
+        let port = url.port_or_known_default()
+                        .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
         Ok(self.path(path).host(host).port(port))
     }
 
@@ -133,7 +133,7 @@ impl<'a> Request<'a> {
                 Some(&hash_vec)
             }
         };
-        let mac = try!(make_mac(&credentials.key,
+        let mac = make_mac(&credentials.key,
                                 ts,
                                 &nonce,
                                 self.method,
@@ -141,7 +141,7 @@ impl<'a> Request<'a> {
                                 self.port,
                                 self.path,
                                 hash,
-                                self.ext));
+                                self.ext)?;
         Ok(Header::new(credentials.id.clone(),
                        ts,
                        nonce,

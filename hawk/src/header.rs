@@ -144,24 +144,24 @@ impl Header {
             pad: true,
             line_length: None,
         };
-        try!(write!(f,
+        write!(f,
                     "id=\"{}\", ts=\"{}\", nonce=\"{}\", mac=\"{}\"",
                     self.id,
                     self.ts.sec,
                     self.nonce,
                     self.mac.to_base64(base64_config),
-                    ));
+                    )?;
         if let Some(ref ext) = self.ext {
-            try!(write!(f, ", ext=\"{}\"", ext));
+            write!(f, ", ext=\"{}\"", ext)?;
         }
         if let Some(ref hash) = self.hash {
-            try!(write!(f, ", hash=\"{}\"", hash.to_base64(base64_config)));
+            write!(f, ", hash=\"{}\"", hash.to_base64(base64_config))?;
         }
         if let Some(ref app) = self.app {
-            try!(write!(f, ", app=\"{}\"", app));
+            write!(f, ", app=\"{}\"", app)?;
         }
         if let Some(ref dlg) = self.dlg {
-            try!(write!(f, ", dlg=\"{}\"", dlg));
+            write!(f, ", dlg=\"{}\"", dlg)?;
         }
         Ok(())
     }
