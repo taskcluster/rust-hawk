@@ -4,7 +4,7 @@ extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
 
-use hawk::{Request, Credentials, SHA256};
+use hawk::{Request, Credentials, Key, SHA256};
 use std::io::{Read, Write};
 use hyper_hawk::Scheme;
 use hyper::Client;
@@ -20,9 +20,8 @@ impl server::Handler for TestHandler {
     fn handle(&self, req: server::Request, mut res: server::Response) {
         let hdr: &header::Authorization<Scheme> = req.headers.get().unwrap();
 
-        let credentials = Credentials::new("test-client", vec![1u8; 32], &SHA256);
-        assert_eq!(credentials.id, hdr.id);
-        hdr.validate(&credentials.key, "localhost", PORT, "/resource", "GET").unwrap();
+        let key = Key::new(vec![1u8; 32], &SHA256);
+        hdr.validate(&key, "localhost", PORT, "/resource", "GET").unwrap();
 
         let body = b"OK";
         res.headers_mut().set(header::ContentLength(body.len() as u64));
@@ -32,7 +31,10 @@ impl server::Handler for TestHandler {
 }
 
 fn client() {
-    let credentials = Credentials::new("test-client", vec![1u8; 32], &SHA256);
+    let credentials = Credentials {
+        id: "test-client".to_string(),
+        key: Key::new(vec![1u8; 32], &SHA256),
+    };
     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
     let request = Request::new()
         .method("GET")

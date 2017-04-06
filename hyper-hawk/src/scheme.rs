@@ -1,8 +1,7 @@
 use hyper::header::Scheme as HyperScheme;
 use std::str::FromStr;
 use std::fmt;
-use ring::hmac;
-use hawk::Header;
+use hawk::{Header, Key};
 use std::ops::Deref;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -16,7 +15,7 @@ impl Scheme {
     /// Validate the header was generated with the given key.  Returns nothing if the header is OK,
     /// otherwise returning an error message.
     pub fn validate(&self,
-                    key: &hmac::SigningKey,
+                    key: &Key,
                     hostname: &str,
                     port: u16,
                     path: &str,

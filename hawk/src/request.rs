@@ -180,7 +180,7 @@ fn random_string(bytes: usize) -> String {
 mod test {
     use super::*;
     use time::Timespec;
-    use credentials::Credentials;
+    use credentials::{Credentials, Key};
     use header::Header;
     use url::Url;
     use ring::digest;
@@ -253,7 +253,10 @@ mod test {
             .path("/foo")
             .host("example.com")
             .port(443);
-        let credentials = Credentials::new("me", vec![99u8; 32], &digest::SHA256);
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new(vec![99u8; 32], &digest::SHA256),
+        };
         let header =
             req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
                 .unwrap();
@@ -284,7 +287,10 @@ mod test {
             .ext(Some("ext"))
             .app(Some("app"))
             .dlg(Some("dlg"));
-        let credentials = Credentials::new("me", vec![99u8; 32], &digest::SHA256);
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new(vec![99u8; 32], &digest::SHA256),
+        };
         let header =
             req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
                 .unwrap();

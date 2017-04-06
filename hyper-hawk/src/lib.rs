@@ -6,7 +6,6 @@ extern crate hyper;
 extern crate hawk;
 extern crate rustc_serialize;
 extern crate time;
-extern crate ring;
 extern crate url;
 
 mod scheme;

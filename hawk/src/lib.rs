@@ -10,11 +10,14 @@
 //! extern crate hawk;
 //! extern crate ring;
 //!
-//! use hawk::{Request, Credentials, SHA256};
+//! use hawk::{Request, Credentials, Key, SHA256};
 //!
 //! fn main() {
 //!     // provide the Hawk id and key
-//!     let credentials = Credentials::new("test-client", vec![99u8; 32], &SHA256);
+//!     let credentials = Credentials {
+//!         id: "test-client".to_string(),
+//!         key: Key::new(vec![99u8; 32], &SHA256),
+//!     };
 //!
 //!     // and finally, provide the details of the request to be authorized
 //!     let request = Request::new()
@@ -45,7 +48,7 @@ mod header;
 pub use header::Header;
 
 mod credentials;
-pub use credentials::Credentials;
+pub use credentials::{Credentials, Key};
 
 mod request;
 pub use request::Request;

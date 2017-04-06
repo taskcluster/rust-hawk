@@ -1,11 +1,11 @@
-use ring::hmac;
+use credentials::Key;
 use std::io;
 use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
 use std::io::Write;
 use time;
 
-pub fn make_mac(key: &hmac::SigningKey,
+pub fn make_mac(key: &Key,
                 ts: time::Timespec,
                 nonce: &str,
                 method: &str,
@@ -46,30 +46,26 @@ pub fn make_mac(key: &hmac::SigningKey,
     };
     try!(fill(&mut buffer).map_err(|err: io::Error| err.to_string()));
 
-    let digest = hmac::sign(key, buffer.as_ref());
-
-    let mut mac = vec![0; key.digest_algorithm().output_len];
-    mac.clone_from_slice(digest.as_ref());
-    return Ok(mac);
+    return Ok(key.sign(buffer.as_ref()));
 }
 
 #[cfg(test)]
 mod test {
     use super::make_mac;
     use time::Timespec;
-    use credentials::Credentials;
+    use credentials::Key;
     use ring::digest;
 
-    fn key() -> Vec<u8> {
-        vec![11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184, 120, 197, 75, 152,
-             201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232]
+    fn key() -> Key {
+        Key::new(vec![11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184, 120, 197,
+                      75, 152, 201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232],
+                 &digest::SHA256)
     }
 
     #[test]
     fn test_make_mac() {
         let key = key();
-        let credentials = Credentials::new("req-id", key, &digest::SHA256);
-        let mac = make_mac(&credentials.key,
+        let mac = make_mac(&key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
@@ -88,9 +84,8 @@ mod test {
     #[test]
     fn test_make_mac_hash() {
         let key = key();
-        let credentials = Credentials::new("req-id", key, &digest::SHA256);
         let hash = vec![1, 2, 3, 4, 5];
-        let mac = make_mac(&credentials.key,
+        let mac = make_mac(&key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
@@ -109,9 +104,8 @@ mod test {
     #[test]
     fn test_make_mac_ext() {
         let key = key();
-        let credentials = Credentials::new("req-id", key, &digest::SHA256);
         let ext = "ext-data".to_string();
-        let mac = make_mac(&credentials.key,
+        let mac = make_mac(&key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
