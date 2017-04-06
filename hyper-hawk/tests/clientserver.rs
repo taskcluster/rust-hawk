@@ -2,7 +2,6 @@ extern crate time;
 extern crate hawk;
 extern crate hyper;
 extern crate hyper_hawk;
-extern crate ring;
 extern crate url;
 
 use hawk::{Request, Credentials, SHA256};
@@ -33,14 +32,14 @@ impl server::Handler for TestHandler {
 }
 
 fn client() {
-    let rng = ring::rand::SystemRandom::new();
     let credentials = Credentials::new("test-client", vec![1u8; 32], &SHA256);
     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
     let request = Request::new()
         .method("GET")
-        .url(&url).unwrap();
+        .url(&url)
+        .unwrap();
     let mut headers = hyper::header::Headers::new();
-    let header = request.generate_header(&rng, &credentials).unwrap();
+    let header = request.generate_header(&credentials).unwrap();
     headers.set(header::Authorization(Scheme(header)));
 
     let client = Client::new();
@@ -58,7 +57,7 @@ fn client() {
 #[test]
 /// Set up a client and a server and authenticate a request from one to the other.
 fn clientserver() {
-    let handler = TestHandler{};
+    let handler = TestHandler {};
     let server = server::Server::http(("127.0.0.1", PORT)).unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
     client();

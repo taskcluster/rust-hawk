@@ -11,10 +11,8 @@
 //! extern crate ring;
 //!
 //! use hawk::{Request, Credentials, SHA256};
-//! use ring::rand;
 //!
 //! fn main() {
-//!     let rng = rand::SystemRandom::new();
 //!     // provide the Hawk id and key
 //!     let credentials = Credentials::new("test-client", vec![99u8; 32], &SHA256);
 //!
@@ -27,7 +25,7 @@
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random
 //!     // nonce, so the MAC will be different on every request.
-//!     let header = request.generate_header(&rng, &credentials).unwrap();
+//!     let header = request.generate_header(&credentials).unwrap();
 //!     assert_eq!(header.id, "test-client");
 //!     assert_eq!(header.mac.len(), 32);
 //! }
@@ -37,6 +35,7 @@ extern crate rustc_serialize;
 extern crate time;
 extern crate ring;
 extern crate url;
+extern crate rand;
 
 #[cfg(test)]
 #[macro_use]
