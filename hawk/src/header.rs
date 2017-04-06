@@ -62,15 +62,24 @@ impl Header {
     /// Validate that the header's MAC field matches that calculated using the other header fields
     /// and the given request information.
     ///
+    /// The header's timestamp is verified to be within `ts_skew` of the current time.
+    ///
     /// It is up to the caller to examine the header's `id` field and supply the corresponding key.
     ///
     /// Note that this is not a complete validation of a request!  It is still up to the caller to
     /// validate the accuracy of the header information.  Notably:
     ///
-    ///  * `ts` is within a reasonable skew (the JS implementation suggests +/- one minute)
     ///  * `nonce` has not been used before (optional)
     ///  * `hash` is the correct hash for the content
-    pub fn validate_mac(&self, key: &Key, method: &str, host: &str, port: u16, path: &str) -> bool {
+    pub fn validate_mac(&self,
+                        key: &Key,
+                        method: &str,
+                        host: &str,
+                        port: u16,
+                        path: &str,
+                        ts_skew: time::Duration)
+                        -> bool {
+        // first verify the MAC
         match make_mac(key,
                        self.ts,
                        &self.nonce,
@@ -88,13 +97,30 @@ impl Header {
                        }) {
             Ok(calculated_mac) => {
                 match constant_time::verify_slices_are_equal(&calculated_mac[..], &self.mac[..]) {
-                    Ok(_) => true,
-                    Err(_) => false,
+                    Ok(_) => (),
+                    Err(_) => {
+                        return false;
+                    }
                 }
             }
-            Err(_) => false,
+            Err(_) => {
+                return false;
+            }
+        };
+
+        // then the timestamp
+        let now = time::now().to_timespec();
+        if now > self.ts {
+            if now - self.ts > ts_skew {
+                return false;
+            }
+        } else {
+            if self.ts - now > ts_skew {
+                return false;
+            }
         }
 
+        true
     }
 
     /// Check a header component for validity.
@@ -255,6 +281,7 @@ impl FromStr for Header {
 #[cfg(test)]
 mod test {
     use super::Header;
+    use time;
     use std::str::FromStr;
     use time::Timespec;
     use request::Request;
@@ -453,9 +480,14 @@ mod test {
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
         let header =
-            req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
+            req.generate_header_full(&credentials, time::now().to_timespec(), "nonny".to_string())
                 .unwrap();
-        assert!(header.validate_mac(&credentials.key, "GET", "example.com", 443, "/foo"));
+        assert!(header.validate_mac(&credentials.key,
+                                    "GET",
+                                    "example.com",
+                                    443,
+                                    "/foo",
+                                    time::Duration::minutes(1)));
     }
 
     #[test]
@@ -469,7 +501,10 @@ mod test {
                                     "GET",
                                     "pulse.taskcluster.net",
                                     443,
-                                    "/v1/namespaces"));
+                                    "/v1/namespaces",
+                                    // allow 1000 years skew, since this was a real request that
+                                    // happened back in 2017, when life was simple and carefree
+                                    time::Duration::weeks(52000)));
     }
 
     #[test]
@@ -483,7 +518,8 @@ mod test {
                                      "GET",
                                      "pulse.taskcluster.net",
                                      443,
-                                     "/v1/namespaces"));
+                                     "/v1/namespaces",
+                                     time::Duration::weeks(52000)));
     }
 
     #[test]
@@ -497,6 +533,7 @@ mod test {
                                      "GET",
                                      "pulse.taskcluster.net",
                                      443,
-                                     "/v1/WRONGPATH"));
+                                     "/v1/WRONGPATH",
+                                     time::Duration::weeks(52000)));
     }
 }
