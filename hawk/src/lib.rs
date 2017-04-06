@@ -54,4 +54,4 @@ pub use request::Request;
 mod mac;
 
 // convenience imports
-pub use ring::digest::{SHA256,SHA384,SHA512};
+pub use ring::digest::{SHA256, SHA384, SHA512};

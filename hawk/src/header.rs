@@ -70,29 +70,33 @@ impl Header {
     ///  * `nonce` has not been used before (optional)
     ///  * `hash` is the correct hash for the content
     pub fn validate_mac(&self,
-                    key: &hmac::SigningKey,
-                    method: &str,
-                    path: &str,
-                    host: &str,
-                    port: u16) -> bool
-    {
-        match make_mac(
-            key,
-            self.ts,
-            &self.nonce,
-            method,
-            path,
-            host,
-            port,
-            match self.hash { None => None, Some(ref v) => Some(v) },
-            match self.ext {None => None, Some(ref s) => Some(s) },
-        ) {
+                        key: &hmac::SigningKey,
+                        method: &str,
+                        path: &str,
+                        host: &str,
+                        port: u16)
+                        -> bool {
+        match make_mac(key,
+                       self.ts,
+                       &self.nonce,
+                       method,
+                       path,
+                       host,
+                       port,
+                       match self.hash {
+                           None => None,
+                           Some(ref v) => Some(v),
+                       },
+                       match self.ext {
+                           None => None,
+                           Some(ref s) => Some(s),
+                       }) {
             Ok(calculated_mac) => {
                 match constant_time::verify_slices_are_equal(&calculated_mac[..], &self.mac[..]) {
                     Ok(_) => true,
                     Err(_) => false,
                 }
-            },
+            }
             Err(_) => false,
         }
 
@@ -264,8 +268,8 @@ mod test {
 
     // this is a header from a real request using the JS Hawk library, to https://pulse.taskcluster.net:443/v1/namespaces
     // with credentials "me" / "tok"
-    const REAL_HEADER: &'static str =
-        "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
+    const REAL_HEADER: &'static str = "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", \
+                                       mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
 
     #[test]
     #[should_panic]
@@ -393,7 +397,10 @@ mod test {
                             vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65,
                                  69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57,
                                  63, 38, 83],
-                             None, None, None, None);
+                            None,
+                            None,
+                            None,
+                            None);
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -406,9 +413,9 @@ mod test {
         let s = Header::new("dh37fgj492je",
                             Timespec::new(1353832234, 0),
                             "j4h3g2",
-                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                 176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
-                                 200, 66, 209, 57, 63, 38, 83],
+                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65,
+                                 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57,
+                                 63, 38, 83],
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
@@ -426,9 +433,9 @@ mod test {
         let s = Header::new("dh37fgj492je",
                             Timespec::new(1353832234, 0),
                             "j4h3g2",
-                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                 176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172,
-                                 200, 66, 209, 57, 63, 38, 83],
+                            vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118, 176, 65,
+                                 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200, 66, 209, 57,
+                                 63, 38, 83],
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
@@ -447,7 +454,9 @@ mod test {
             .host("example.com")
             .port(443);
         let credentials = Credentials::new("me", vec![99u8; 32], &digest::SHA256);
-        let header = req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string()).unwrap();
+        let header =
+            req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
+                .unwrap();
         assert!(header.validate_mac(&credentials.key, "GET", "/foo", "example.com", 443));
     }
 
@@ -455,20 +464,32 @@ mod test {
     fn test_validate_real_request() {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials::new("me", "tok", &digest::SHA256);
-        assert!(header.validate_mac(&credentials.key, "GET", "/v1/namespaces", "pulse.taskcluster.net", 443));
+        assert!(header.validate_mac(&credentials.key,
+                                    "GET",
+                                    "/v1/namespaces",
+                                    "pulse.taskcluster.net",
+                                    443));
     }
 
     #[test]
     fn test_validate_real_request_bad_creds() {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials::new("me", "WRONG", &digest::SHA256);
-        assert!(!header.validate_mac(&credentials.key, "GET", "/v1/namespaces", "pulse.taskcluster.net", 443));
+        assert!(!header.validate_mac(&credentials.key,
+                                     "GET",
+                                     "/v1/namespaces",
+                                     "pulse.taskcluster.net",
+                                     443));
     }
 
     #[test]
     fn test_validate_real_request_bad_req_info() {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials::new("me", "tok", &digest::SHA256);
-        assert!(!header.validate_mac(&credentials.key, "GET", "/v1/WRONGPATH", "pulse.taskcluster.net", 443));
+        assert!(!header.validate_mac(&credentials.key,
+                                     "GET",
+                                     "/v1/WRONGPATH",
+                                     "pulse.taskcluster.net",
+                                     443));
     }
 }

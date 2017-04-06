@@ -36,13 +36,15 @@ mod test {
     fn test_new_sha256() {
         let id = "clientId";
         let key = vec![0u8; 32];
-        assert_eq!(Credentials::new(id, key, &digest::SHA256).id, "clientId".to_string());
+        assert_eq!(Credentials::new(id, key, &digest::SHA256).id,
+                   "clientId".to_string());
     }
 
     #[test]
     fn test_new_sha256_bad_length() {
         let id = "clientId";
         let key = vec![0u8; 99];
-        assert_eq!(Credentials::new(id, key, &digest::SHA256).id, "clientId".to_string());
+        assert_eq!(Credentials::new(id, key, &digest::SHA256).id,
+                   "clientId".to_string());
     }
 }

@@ -15,11 +15,17 @@ pub struct Scheme(pub Header);
 impl Scheme {
     /// Validate the header was generated with the given key.  Returns nothing if the header is OK,
     /// otherwise returning an error message.
-    pub fn validate(&self, key: &hmac::SigningKey, hostname: &str, port: u16, path: &str, method: &str) -> Result<(), String> {
+    pub fn validate(&self,
+                    key: &hmac::SigningKey,
+                    hostname: &str,
+                    port: u16,
+                    path: &str,
+                    method: &str)
+                    -> Result<(), String> {
         if !self.0.validate_mac(key, method, path, hostname, port) {
             // this is deliberately brief, to avoid leaking information that might be useful
             // in attacking the MAC algorithm
-            return Err("Bad MAC".to_string())
+            return Err("Bad MAC".to_string());
         }
         Ok(())
     }

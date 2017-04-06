@@ -5,11 +5,16 @@ use rustc_serialize::base64::ToBase64;
 use std::io::Write;
 use time;
 
-pub fn make_mac(key: &hmac::SigningKey, ts: time::Timespec, nonce: &str, method: &str, path: &str,
-                host: &str, port: u16, hash: Option<&Vec<u8>>, ext: Option<&str>) ->
-                Result<Vec<u8>, String>
-
-{
+pub fn make_mac(key: &hmac::SigningKey,
+                ts: time::Timespec,
+                nonce: &str,
+                method: &str,
+                path: &str,
+                host: &str,
+                port: u16,
+                hash: Option<&Vec<u8>>,
+                ext: Option<&str>)
+                -> Result<Vec<u8>, String> {
     let mut buffer: Vec<u8> = vec![];
     let fill = |buffer: &mut Vec<u8>| {
         try!(write!(buffer, "hawk.1.header\n"));
@@ -64,11 +69,20 @@ mod test {
     fn test_make_mac() {
         let key = key();
         let credentials = Credentials::new("req-id", key, &digest::SHA256);
-        let mac = make_mac(&credentials.key, Timespec::new(1000, 100), "nonny", "POST", "/v1/api", "mysite.com", 443, None, None).unwrap();
+        let mac = make_mac(&credentials.key,
+                           Timespec::new(1000, 100),
+                           "nonny",
+                           "POST",
+                           "/v1/api",
+                           "mysite.com",
+                           443,
+                           None,
+                           None)
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
-                vec![192, 227, 235, 121, 157, 185, 197, 79, 189, 214, 235, 139, 9, 232, 99, 55, 67,
-                     30, 68, 0, 150, 187, 192, 238, 21, 200, 209, 107, 245, 159, 243, 178]);
+                vec![192, 227, 235, 121, 157, 185, 197, 79, 189, 214, 235, 139, 9, 232, 99, 55,
+                     67, 30, 68, 0, 150, 187, 192, 238, 21, 200, 209, 107, 245, 159, 243, 178]);
     }
 
     #[test]
@@ -76,7 +90,16 @@ mod test {
         let key = key();
         let credentials = Credentials::new("req-id", key, &digest::SHA256);
         let hash = vec![1, 2, 3, 4, 5];
-        let mac = make_mac(&credentials.key, Timespec::new(1000, 100), "nonny", "POST", "/v1/api", "mysite.com", 443, Some(&hash), None).unwrap();
+        let mac = make_mac(&credentials.key,
+                           Timespec::new(1000, 100),
+                           "nonny",
+                           "POST",
+                           "/v1/api",
+                           "mysite.com",
+                           443,
+                           Some(&hash),
+                           None)
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
                 vec![61, 128, 208, 253, 88, 135, 190, 196, 1, 69, 153, 193, 124, 4, 195, 87, 38,
@@ -88,7 +111,16 @@ mod test {
         let key = key();
         let credentials = Credentials::new("req-id", key, &digest::SHA256);
         let ext = "ext-data".to_string();
-        let mac = make_mac(&credentials.key, Timespec::new(1000, 100), "nonny", "POST", "/v1/api", "mysite.com", 443, None, Some(&ext)).unwrap();
+        let mac = make_mac(&credentials.key,
+                           Timespec::new(1000, 100),
+                           "nonny",
+                           "POST",
+                           "/v1/api",
+                           "mysite.com",
+                           443,
+                           None,
+                           Some(&ext))
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
                 vec![187, 104, 238, 100, 168, 112, 37, 68, 187, 141, 168, 155, 177, 193, 113, 0,
