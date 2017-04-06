@@ -12,8 +12,8 @@ This is a work-in-progress.
     * timestamp skew
     * nonce validation (via callback)
     * content hash validation
+
 * Meta
-  * Better error handling (custom type, `impl Error`, `impl From<io::Error>` etc.
   * Put request parameters in the same order everywhere (method / host / port / path)
 
 * Client
