@@ -21,7 +21,7 @@ impl server::Handler for TestHandler {
         let hdr: &header::Authorization<Scheme> = req.headers.get().unwrap();
 
         let key = Key::new(vec![1u8; 32], &SHA256);
-        hdr.validate(&key, "localhost", PORT, "/resource", "GET").unwrap();
+        hdr.validate(&key, "GET", "localhost", PORT, "/resource").unwrap();
 
         let body = b"OK";
         res.headers_mut().set(header::ContentLength(body.len() as u64));

@@ -16,12 +16,12 @@ impl Scheme {
     /// otherwise returning an error message.
     pub fn validate(&self,
                     key: &Key,
+                    method: &str,
                     hostname: &str,
                     port: u16,
-                    path: &str,
-                    method: &str)
+                    path: &str)
                     -> Result<(), String> {
-        if !self.0.validate_mac(key, method, path, hostname, port) {
+        if !self.0.validate_mac(key, method, hostname, port, path) {
             // this is deliberately brief, to avoid leaking information that might be useful
             // in attacking the MAC algorithm
             return Err("Bad MAC".to_string());

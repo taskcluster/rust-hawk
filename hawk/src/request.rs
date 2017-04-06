@@ -27,9 +27,9 @@ static EMPTY_STRING: &'static str = "";
 #[derive(Debug, Clone)]
 pub struct Request<'a> {
     method: &'a str,
-    path: &'a str,
     host: &'a str,
     port: u16,
+    path: &'a str,
     hash: Option<&'a [u8]>,
     ext: Option<&'a str>,
     app: Option<&'a str>,
@@ -42,9 +42,9 @@ impl<'a> Request<'a> {
     pub fn new() -> Self {
         Request {
             method: EMPTY_STRING,
-            path: EMPTY_STRING,
             host: EMPTY_STRING,
             port: 0,
+            path: EMPTY_STRING,
             hash: None,
             ext: None,
             app: None,
@@ -134,9 +134,9 @@ impl<'a> Request<'a> {
                                 ts,
                                 &nonce,
                                 self.method,
-                                self.path,
                                 self.host,
                                 self.port,
+                                self.path,
                                 hash,
                                 self.ext));
         Ok(Header::new(credentials.id.clone(),

@@ -13,9 +13,6 @@ This is a work-in-progress.
     * nonce validation (via callback)
     * content hash validation
 
-* Meta
-  * Put request parameters in the same order everywhere (method / host / port / path)
-
 * Client
   * experiment with adding an Authorizable trait and imlementing it for RequestBuilders, so `client.get().....authorizeHawk(..).send()`
   * adjust for clock skew

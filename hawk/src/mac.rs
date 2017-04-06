@@ -9,9 +9,9 @@ pub fn make_mac(key: &Key,
                 ts: time::Timespec,
                 nonce: &str,
                 method: &str,
-                path: &str,
                 host: &str,
                 port: u16,
+                path: &str,
                 hash: Option<&Vec<u8>>,
                 ext: Option<&str>)
                 -> Result<Vec<u8>, String> {
@@ -69,9 +69,9 @@ mod test {
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
-                           "/v1/api",
                            "mysite.com",
                            443,
+                           "/v1/api",
                            None,
                            None)
             .unwrap();
@@ -89,9 +89,9 @@ mod test {
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
-                           "/v1/api",
                            "mysite.com",
                            443,
+                           "/v1/api",
                            Some(&hash),
                            None)
             .unwrap();
@@ -109,9 +109,9 @@ mod test {
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
-                           "/v1/api",
                            "mysite.com",
                            443,
+                           "/v1/api",
                            None,
                            Some(&ext))
             .unwrap();

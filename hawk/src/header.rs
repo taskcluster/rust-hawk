@@ -70,14 +70,14 @@ impl Header {
     ///  * `ts` is within a reasonable skew (the JS implementation suggests +/- one minute)
     ///  * `nonce` has not been used before (optional)
     ///  * `hash` is the correct hash for the content
-    pub fn validate_mac(&self, key: &Key, method: &str, path: &str, host: &str, port: u16) -> bool {
+    pub fn validate_mac(&self, key: &Key, method: &str, host: &str, port: u16, path: &str) -> bool {
         match make_mac(key,
                        self.ts,
                        &self.nonce,
                        method,
-                       path,
                        host,
                        port,
+                       path,
                        match self.hash {
                            None => None,
                            Some(ref v) => Some(v),
@@ -455,7 +455,7 @@ mod test {
         let header =
             req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
                 .unwrap();
-        assert!(header.validate_mac(&credentials.key, "GET", "/foo", "example.com", 443));
+        assert!(header.validate_mac(&credentials.key, "GET", "example.com", 443, "/foo"));
     }
 
     #[test]
@@ -467,9 +467,9 @@ mod test {
         };
         assert!(header.validate_mac(&credentials.key,
                                     "GET",
-                                    "/v1/namespaces",
                                     "pulse.taskcluster.net",
-                                    443));
+                                    443,
+                                    "/v1/namespaces"));
     }
 
     #[test]
@@ -481,9 +481,9 @@ mod test {
         };
         assert!(!header.validate_mac(&credentials.key,
                                      "GET",
-                                     "/v1/namespaces",
                                      "pulse.taskcluster.net",
-                                     443));
+                                     443,
+                                     "/v1/namespaces"));
     }
 
     #[test]
@@ -495,8 +495,8 @@ mod test {
         };
         assert!(!header.validate_mac(&credentials.key,
                                      "GET",
-                                     "/v1/WRONGPATH",
                                      "pulse.taskcluster.net",
-                                     443));
+                                     443,
+                                     "/v1/WRONGPATH"));
     }
 }
