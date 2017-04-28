@@ -27,13 +27,13 @@ pub fn make_mac(key: &Key,
 
     if let Some(ref h) = hash {
         write!(buffer,
-                    "{}\n",
-                    h.to_base64(base64::Config {
-                        char_set: base64::CharacterSet::Standard,
-                        newline: base64::Newline::LF,
-                        pad: true,
-                        line_length: None,
-                    }))?;
+               "{}\n",
+               h.to_base64(base64::Config {
+                               char_set: base64::CharacterSet::Standard,
+                               newline: base64::Newline::LF,
+                               pad: true,
+                               line_length: None,
+                           }))?;
     } else {
         write!(buffer, "\n")?;
     }
@@ -71,7 +71,7 @@ mod test {
                            "/v1/api",
                            None,
                            None)
-            .unwrap();
+                .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
                 vec![192, 227, 235, 121, 157, 185, 197, 79, 189, 214, 235, 139, 9, 232, 99, 55,
@@ -91,7 +91,7 @@ mod test {
                            "/v1/api",
                            Some(&hash),
                            None)
-            .unwrap();
+                .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
                 vec![61, 128, 208, 253, 88, 135, 190, 196, 1, 69, 153, 193, 124, 4, 195, 87, 38,
@@ -111,7 +111,7 @@ mod test {
                            "/v1/api",
                            None,
                            Some(&ext))
-            .unwrap();
+                .unwrap();
         println!("got {:?}", mac);
         assert!(mac ==
                 vec![187, 104, 238, 100, 168, 112, 37, 68, 187, 141, 168, 155, 177, 193, 113, 0,

@@ -81,9 +81,9 @@ impl<'a> Request<'a> {
     pub fn url(self, url: &'a Url) -> Result<Self, HawkError> {
         let path = url.path();
         let host = url.host_str()
-                        .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
+            .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
         let port = url.port_or_known_default()
-                        .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
+            .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
         Ok(self.path(path).host(host).port(port))
     }
 
@@ -134,18 +134,18 @@ impl<'a> Request<'a> {
             }
         };
         let mac = make_mac(&credentials.key,
-                                ts,
-                                &nonce,
-                                self.method,
-                                self.host,
-                                self.port,
-                                self.path,
-                                hash,
-                                self.ext)?;
-        Ok(Header::new(credentials.id.clone(),
-                       ts,
-                       nonce,
-                       mac,
+                           ts,
+                           &nonce,
+                           self.method,
+                           self.host,
+                           self.port,
+                           self.path,
+                           hash,
+                           self.ext)?;
+        Ok(Header::new(Some(credentials.id.clone()),
+                       Some(ts),
+                       Some(nonce),
+                       Some(mac),
                        match self.ext {
                            None => None,
                            Some(v) => Some(v.to_string()),
@@ -172,11 +172,11 @@ fn random_string(bytes: usize) -> String {
     let mut bytes = vec![0u8; bytes];
     rng.fill_bytes(&mut bytes);
     bytes.to_base64(base64::Config {
-        char_set: base64::CharacterSet::Standard,
-        newline: base64::Newline::LF,
-        pad: true,
-        line_length: None,
-    })
+                        char_set: base64::CharacterSet::Standard,
+                        newline: base64::Newline::LF,
+                        pad: true,
+                        line_length: None,
+                    })
 }
 
 #[cfg(test)]
@@ -226,9 +226,7 @@ mod test {
 
     #[test]
     fn test_builder_clone() {
-        let req = Request::new()
-            .method("GET")
-            .path("/foo");
+        let req = Request::new().method("GET").path("/foo");
         let req2 = req.clone().path("/bar");
 
         assert_eq!(req.method, "GET");
@@ -240,9 +238,7 @@ mod test {
     #[test]
     fn test_url_builder() {
         let url = Url::parse("https://example.com/foo").unwrap();
-        let req = Request::new()
-            .url(&url)
-            .unwrap();
+        let req = Request::new().url(&url).unwrap();
 
         assert_eq!(req.path, "/foo");
         assert_eq!(req.host, "example.com");
@@ -265,12 +261,12 @@ mod test {
                 .unwrap();
         assert_eq!(header,
                    Header {
-                       id: "me".to_string(),
-                       ts: Timespec::new(1000, 100),
-                       nonce: "nonny".to_string(),
-                       mac: vec![122, 47, 2, 53, 195, 247, 185, 107, 133, 250, 61, 134, 200, 35,
-                                 118, 94, 48, 175, 237, 108, 60, 71, 4, 2, 244, 66, 41, 172, 91,
-                                 7, 233, 140],
+                       id: Some("me".to_string()),
+                       ts: Some(Timespec::new(1000, 100)),
+                       nonce: Some("nonny".to_string()),
+                       mac: Some(vec![122, 47, 2, 53, 195, 247, 185, 107, 133, 250, 61, 134, 200,
+                                      35, 118, 94, 48, 175, 237, 108, 60, 71, 4, 2, 244, 66, 41,
+                                      172, 91, 7, 233, 140]),
                        ext: None,
                        hash: None,
                        app: None,
@@ -299,12 +295,12 @@ mod test {
                 .unwrap();
         assert_eq!(header,
                    Header {
-                       id: "me".to_string(),
-                       ts: Timespec::new(1000, 100),
-                       nonce: "nonny".to_string(),
-                       mac: vec![72, 123, 243, 214, 145, 81, 129, 54, 183, 90, 22, 136, 192, 146,
-                                 208, 53, 216, 138, 145, 94, 175, 204, 217, 8, 77, 16, 202, 50,
-                                 10, 144, 133, 162],
+                       id: Some("me".to_string()),
+                       ts: Some(Timespec::new(1000, 100)),
+                       nonce: Some("nonny".to_string()),
+                       mac: Some(vec![72, 123, 243, 214, 145, 81, 129, 54, 183, 90, 22, 136, 192,
+                                      146, 208, 53, 216, 138, 145, 94, 175, 204, 217, 8, 77, 16,
+                                      202, 50, 10, 144, 133, 162]),
                        ext: Some("ext".to_string()),
                        hash: Some(hash.clone()),
                        app: Some("app".to_string()),
