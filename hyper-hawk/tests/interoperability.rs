@@ -8,6 +8,7 @@ use std::process::{Command, Child};
 use hawk::{Request, Credentials, Key, SHA256};
 use std::io::Read;
 use std::net::TcpListener;
+use std::path::Path;
 use hyper_hawk::Scheme;
 use hyper::Client;
 use hyper::header;
@@ -20,7 +21,12 @@ const CALLBACK_PORT: u16 = PORT + 1;
 fn start_node_script(script: &str) -> Child {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", CALLBACK_PORT)).unwrap();
 
-    // TODO: run 'npm install' if node_modules do not exist (or maybe skip?)
+    // check for `node_modules' first
+    let path = Path::new("tests/node/node_modules");
+    if !path.is_dir() {
+        panic!("Run `yarn` or `npm install` in tests/node");
+    }
+
     let child = Command::new("node")
         .arg(script)
         .arg(format!("{}", PORT))
