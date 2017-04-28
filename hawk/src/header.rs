@@ -6,7 +6,7 @@ use ring::constant_time;
 use mac::make_mac;
 use credentials::Key;
 use error::HawkError;
-use time;
+use time::{now, Timespec, Duration};
 
 /// Representation of a Hawk `Authorization` header value.
 ///
@@ -14,7 +14,7 @@ use time;
 #[derive(Clone, PartialEq, Debug)]
 pub struct Header {
     pub id: String,
-    pub ts: time::Timespec,
+    pub ts: Timespec,
     pub nonce: String,
     pub mac: Vec<u8>,
     pub ext: Option<String>,
@@ -29,7 +29,7 @@ impl Header {
     /// None of the header components can contain the character `\"`.  This function will panic
     /// if any such characters appear.
     pub fn new<S>(id: S,
-                  ts: time::Timespec,
+                  ts: Timespec,
                   nonce: S,
                   mac: Vec<u8>,
                   ext: Option<S>,
@@ -78,7 +78,7 @@ impl Header {
                         host: &str,
                         port: u16,
                         path: &str,
-                        ts_skew: time::Duration)
+                        ts_skew: Duration)
                         -> bool {
         // first verify the MAC
         match make_mac(key,
@@ -110,7 +110,7 @@ impl Header {
         };
 
         // then the timestamp
-        let now = time::now().to_timespec();
+        let now = now().to_timespec();
         if now > self.ts {
             if now - self.ts > ts_skew {
                 return false;
@@ -180,7 +180,7 @@ impl FromStr for Header {
 
         // Required attributes
         let mut id: Option<&str> = None;
-        let mut ts: Option<time::Timespec> = None;
+        let mut ts: Option<Timespec> = None;
         let mut nonce: Option<&str> = None;
         let mut mac: Option<Vec<u8>> = None;
         // Optional attributes
@@ -217,7 +217,7 @@ impl FromStr for Header {
                                 "id" => id = Some(val),
                                 "ts" => {
                                     match i64::from_str(val) {
-                                        Ok(sec) => ts = Some(time::Timespec::new(sec, 0)),
+                                        Ok(sec) => ts = Some(Timespec::new(sec, 0)),
                                         Err(_) => return Err(HawkError::InvalidTimestamp),
                                     };
                                 }
@@ -282,9 +282,8 @@ impl FromStr for Header {
 #[cfg(test)]
 mod test {
     use super::Header;
-    use time;
+    use time::{now, Duration, Timespec};
     use std::str::FromStr;
-    use time::Timespec;
     use request::Request;
     use credentials::{Credentials, Key};
     use ring::digest;
@@ -481,14 +480,14 @@ mod test {
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
         let header =
-            req.generate_header_full(&credentials, time::now().to_timespec(), "nonny".to_string())
+            req.generate_header_full(&credentials, now().to_timespec(), "nonny".to_string())
                 .unwrap();
         assert!(header.validate_mac(&credentials.key,
                                     "GET",
                                     "example.com",
                                     443,
                                     "/foo",
-                                    time::Duration::minutes(1)));
+                                    Duration::minutes(1)));
     }
 
     #[test]
@@ -505,7 +504,7 @@ mod test {
                                     "/v1/namespaces",
                                     // allow 1000 years skew, since this was a real request that
                                     // happened back in 2017, when life was simple and carefree
-                                    time::Duration::weeks(52000)));
+                                    Duration::weeks(52000)));
     }
 
     #[test]
@@ -520,7 +519,7 @@ mod test {
                                      "pulse.taskcluster.net",
                                      443,
                                      "/v1/namespaces",
-                                     time::Duration::weeks(52000)));
+                                     Duration::weeks(52000)));
     }
 
     #[test]
@@ -535,6 +534,6 @@ mod test {
                                      "pulse.taskcluster.net",
                                      443,
                                      "/v1/WRONGPATH",
-                                     time::Duration::weeks(52000)));
+                                     Duration::weeks(52000)));
     }
 }
