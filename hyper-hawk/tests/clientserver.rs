@@ -4,9 +4,9 @@ extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
 
-use hawk::{Request, Credentials, Key, SHA256};
+use hawk::{Request, Header, Credentials, Key, SHA256};
 use std::io::{Read, Write};
-use hyper_hawk::Scheme;
+use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
 use hyper::header;
 use hyper::server;
@@ -18,7 +18,7 @@ struct TestHandler {}
 
 impl server::Handler for TestHandler {
     fn handle(&self, req: server::Request, mut res: server::Response) {
-        let hdr: &header::Authorization<Scheme> = req.headers.get().unwrap();
+        let hdr: &header::Authorization<HawkScheme> = req.headers.get().unwrap();
 
         let key = Key::new(vec![1u8; 32], &SHA256);
         hdr.validate(&key,
@@ -29,8 +29,21 @@ impl server::Handler for TestHandler {
                       time::Duration::minutes(1))
             .unwrap();
 
+        let server_hdr = Header::new(hdr.id.clone(),
+                                     None,
+                                     hdr.nonce.clone(),
+                                     None,
+                                     None,
+                                     None,
+                                     None,
+                                     None);
+        res.headers_mut()
+            .set(ServerAuthorization(HawkScheme(server_hdr)));
+
         let body = b"OK";
-        res.headers_mut().set(header::ContentLength(body.len() as u64));
+        res.headers_mut()
+            .set(header::ContentLength(body.len() as u64));
+
         let mut res = res.start().unwrap();
         res.write_all(body).unwrap();
     }
@@ -42,16 +55,15 @@ fn client() {
         key: Key::new(vec![1u8; 32], &SHA256),
     };
     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
-    let request = Request::new()
-        .method("GET")
-        .url(&url)
-        .unwrap();
+    let request = Request::new().method("GET").url(&url).unwrap();
     let mut headers = hyper::header::Headers::new();
     let header = request.generate_header(&credentials).unwrap();
-    headers.set(header::Authorization(Scheme(header)));
+    let nonce = header.nonce.clone();
+    headers.set(header::Authorization(HawkScheme(header)));
 
     let client = Client::new();
-    let mut res = client.get(url.as_str())
+    let mut res = client
+        .get(url.as_str())
         .headers(headers)
         .send()
         .unwrap();
@@ -60,6 +72,10 @@ fn client() {
     res.read_to_string(&mut body).unwrap();
     assert!(res.status == hyper::Ok);
     assert!(body == "OK");
+
+    let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
+    assert_eq!(server_hdr.id, Some("test-client".to_string()));
+    assert_eq!(server_hdr.nonce, nonce);
 }
 
 #[test]

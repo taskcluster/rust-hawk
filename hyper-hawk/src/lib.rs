@@ -8,5 +8,8 @@ extern crate rustc_serialize;
 extern crate time;
 extern crate url;
 
-mod scheme;
-pub use scheme::Scheme;
+mod serverauth;
+pub use serverauth::ServerAuthorization;
+
+mod authscheme;
+pub use authscheme::HawkScheme;

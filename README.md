@@ -9,7 +9,7 @@ This is a work-in-progress.
 
 * Protocol Fidelity
   * bidirectional support (server validation); requires
-    * nonstandard "Server-Authorization" header
+    * [DONE] nonstandard "Server-Authorization" header
     * abbreviated Hawk authorization (just mac and maybe hash and/or ext) with defaults coming from request header
   * bewits
   * Support additional validation in the `hyper-hawk` crate:

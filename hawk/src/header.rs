@@ -10,7 +10,7 @@ use time::{now, Timespec, Duration};
 
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
-/// All fields are optoinal, although for specific purposes some fields must be present.
+/// All fields are optional, although for specific purposes some fields must be present.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Header {
     pub id: Option<String>,

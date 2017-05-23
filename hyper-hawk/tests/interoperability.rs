@@ -9,7 +9,7 @@ use hawk::{Request, Credentials, Key, SHA256};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
-use hyper_hawk::Scheme;
+use hyper_hawk::HawkScheme;
 use hyper::Client;
 use hyper::header;
 use url::Url;
@@ -59,10 +59,11 @@ fn client_with_header() {
         .ext(Some("ext-content"));
     let mut headers = hyper::header::Headers::new();
     let header = request.generate_header(&credentials).unwrap();
-    headers.set(header::Authorization(Scheme(header)));
+    headers.set(header::Authorization(HawkScheme(header)));
 
     let client = Client::new();
-    let mut res = client.get(url.as_str())
+    let mut res = client
+        .get(url.as_str())
         .headers(headers)
         .send()
         .unwrap();

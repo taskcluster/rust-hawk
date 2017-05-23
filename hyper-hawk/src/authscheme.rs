@@ -1,4 +1,4 @@
-use hyper::header::Scheme as HyperScheme;
+use hyper::header::Scheme;
 use std::str::FromStr;
 use std::fmt;
 use hawk::{Header, Key};
@@ -6,13 +6,13 @@ use std::ops::Deref;
 use time;
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Scheme(pub Header);
+pub struct HawkScheme(pub Header);
 
-/// Scheme is a Hyper Scheme implementation for Hawk Authorization headers.
+/// HawkScheme is a Hyper Scheme implementation for Hawk Authorization headers.
 ///
-/// The Scheme type dereferences to a Hawk Header, allowing access to all members and methods of
+/// The HawkScheme type dereferences to a Hawk Header, allowing access to all members and methods of
 /// that type.
-impl Scheme {
+impl HawkScheme {
     /// Validate the header was generated with the given key.  Returns nothing if the header is OK,
     /// otherwise an error message.
     pub fn validate(&self,
@@ -23,7 +23,8 @@ impl Scheme {
                     path: &str,
                     ts_skew: time::Duration)
                     -> Result<(), String> {
-        if !self.0.validate_mac(key, method, hostname, port, path, ts_skew) {
+        if !self.0
+                .validate_mac(key, method, hostname, port, path, ts_skew) {
             // this is deliberately brief, to avoid leaking information that might be useful
             // in attacking the MAC algorithm
             return Err("Bad MAC".to_string());
@@ -32,7 +33,7 @@ impl Scheme {
     }
 }
 
-impl Deref for Scheme {
+impl Deref for HawkScheme {
     type Target = Header;
 
     fn deref(&self) -> &Header {
@@ -40,17 +41,17 @@ impl Deref for Scheme {
     }
 }
 
-impl FromStr for Scheme {
+impl FromStr for HawkScheme {
     type Err = String;
-    fn from_str(s: &str) -> Result<Scheme, String> {
+    fn from_str(s: &str) -> Result<HawkScheme, String> {
         match Header::from_str(s) {
-            Ok(h) => Ok(Scheme(h)),
+            Ok(h) => Ok(HawkScheme(h)),
             Err(e) => Err(e.to_string()),
         }
     }
 }
 
-impl HyperScheme for Scheme {
+impl Scheme for HawkScheme {
     fn scheme() -> Option<&'static str> {
         Some("Hawk")
     }
