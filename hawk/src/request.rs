@@ -8,7 +8,7 @@ use credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
 use error::HawkError;
-use time::Duration;
+use time::{now, Duration};
 
 static EMPTY_STRING: &'static str = "";
 
@@ -126,14 +126,6 @@ impl<'a> Request<'a> {
                                 ts: time::Timespec,
                                 nonce: String)
                                 -> Result<Header, HawkError> {
-        let hash_vec;
-        let hash = match self.hash {
-            None => None,
-            Some(v) => {
-                hash_vec = v.to_vec();
-                Some(&hash_vec)
-            }
-        };
         let mac = Mac::new(&credentials.key,
                            ts,
                            &nonce,
@@ -141,7 +133,7 @@ impl<'a> Request<'a> {
                            self.host,
                            self.port,
                            self.path,
-                           hash,
+                           self.hash,
                            self.ext)?;
         Ok(Header::new(Some(credentials.id.clone()),
                        Some(ts),
@@ -165,10 +157,90 @@ impl<'a> Request<'a> {
                        }))
     }
 
-    /// Validate that this header's signature matches the request
-    pub fn validate(&self, header: &Header, key: &Key, ts_skew: Duration) -> bool {
-        // TODO: test
-        header.validate_mac(key, self.method, self.host, self.port, self.path, ts_skew)
+    /// Validate that the header's MAC field matches that calculated using the other header fields
+    /// and the given request information.
+    ///
+    /// The header's timestamp is verified to be within `ts_skew` of the current time.  If any of
+    /// the required header fields are missing, the method will return false.
+    ///
+    /// It is up to the caller to examine the header's `id` field and supply the corresponding key.
+    ///
+    /// Note that this is not a complete validation of a request!  It is still up to the caller to
+    /// validate the accuracy of the header information.  Notably:
+    ///
+    ///  * `nonce` has not been used before (optional)
+    ///  * `request.hash` must be calculated based on the request body, not copied from the request
+    ///    header
+    pub fn validate_header(&self, header: &Header, key: &Key, ts_skew: Duration) -> bool {
+        // extract required fields, returning early if they are not present
+        let ts = match header.ts {
+            Some(ts) => ts,
+            None => {
+                return false;
+            }
+        };
+        let nonce = match header.nonce {
+            Some(ref nonce) => nonce,
+            None => {
+                return false;
+            }
+        };
+        let header_mac = match header.mac {
+            Some(ref mac) => mac,
+            None => {
+                return false;
+            }
+        };
+
+        // first verify the MAC
+        match Mac::new(key,
+                       ts,
+                       nonce,
+                       self.method,
+                       self.host,
+                       self.port,
+                       self.path,
+                       self.hash,
+                       self.ext) {
+            Ok(calculated_mac) => {
+                if &calculated_mac != header_mac {
+                    return false;
+                }
+            }
+            Err(_) => {
+                return false;
+            }
+        };
+
+        // ..then the hashes
+        match (&self.hash, &header.hash) {
+            (&Some(rh), &Some(ref hh)) => {
+                if rh != &hh[..] {
+                    return false;
+                }
+            }
+            (&Some(_), &None) => {
+                return false;
+            }
+            (&None, &Some(_)) => {
+                return false;
+            }
+            (&None, &None) => (),
+        }
+
+        // ..then the timestamp
+        let now = now().to_timespec();
+        if now > ts {
+            if now - ts > ts_skew {
+                return false;
+            }
+        } else {
+            if ts - now > ts_skew {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -194,6 +266,12 @@ mod test {
     use header::Header;
     use url::Url;
     use ring::digest;
+    use std::str::FromStr;
+
+    // this is a header from a real request using the JS Hawk library, to
+    // https://pulse.taskcluster.net:443/v1/namespaces with credentials "me" / "tok"
+    const REAL_HEADER: &'static str = "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", \
+                                       mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
 
     #[test]
     fn test_empty() {
@@ -314,5 +392,69 @@ mod test {
                        app: Some("app".to_string()),
                        dlg: Some("dlg".to_string()),
                    });
+    }
+
+    #[test]
+    fn test_validate_matches_generated() {
+        let req = Request::new()
+            .method("GET")
+            .path("/foo")
+            .host("example.com")
+            .port(443);
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new(vec![99u8; 32], &digest::SHA256),
+        };
+        let header =
+            req.generate_header_full(&credentials, now().to_timespec(), "nonny".to_string())
+                .unwrap();
+        assert!(req.validate_header(&header, &credentials.key, Duration::minutes(1)));
+    }
+
+    #[test]
+    fn test_validate_real_request() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new("tok", &digest::SHA256),
+        };
+        let req = Request::new()
+            .method("GET")
+            .path("/v1/namespaces")
+            .host("pulse.taskcluster.net")
+            .port(443);
+        // allow 1000 years skew, since this was a real request that
+        // happened back in 2017, when life was simple and carefree
+        assert!(req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_validate_real_request_bad_creds() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new("WRONG", &digest::SHA256),
+        };
+        let req = Request::new()
+            .method("GET")
+            .path("/v1/namespaces")
+            .host("pulse.taskcluster.net")
+            .port(443);
+        assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_validate_real_request_bad_req_info() {
+        let header = Header::from_str(REAL_HEADER).unwrap();
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new("tok", &digest::SHA256),
+        };
+        let req = Request::new()
+            .method("GET")
+            .path("RONG PATH")
+            .host("pulse.taskcluster.net")
+            .port(443);
+        assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
     }
 }

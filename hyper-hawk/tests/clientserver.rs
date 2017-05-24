@@ -30,7 +30,7 @@ impl server::Handler for TestHandler {
             .path("/resource");
 
         let key = Key::new(vec![1u8; 32], &SHA256);
-        if !request.validate(&hdr, &key, time::Duration::minutes(1)) {
+        if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {
             panic!("header validation failed");
         }
 

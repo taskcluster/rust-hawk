@@ -3,9 +3,8 @@ use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::fmt;
 use std::str::FromStr;
 use mac::Mac;
-use credentials::Key;
 use error::HawkError;
-use time::{now, Timespec, Duration};
+use time::Timespec;
 
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
@@ -63,76 +62,6 @@ impl Header {
                 None => None,
             },
         }
-    }
-
-    /// Validate that the header's MAC field matches that calculated using the other header fields
-    /// and the given request information.
-    ///
-    /// The header's timestamp is verified to be within `ts_skew` of the current time.  If any of
-    /// the required header fields are missing, the method will return false.
-    ///
-    /// It is up to the caller to examine the header's `id` field and supply the corresponding key.
-    ///
-    /// Note that this is not a complete validation of a request!  It is still up to the caller to
-    /// validate the accuracy of the header information.  Notably:
-    ///
-    ///  * `nonce` has not been used before (optional)
-    ///  * `hash` is the correct hash for the content
-    pub fn validate_mac(&self,
-                        key: &Key,
-                        method: &str,
-                        host: &str,
-                        port: u16,
-                        path: &str,
-                        ts_skew: Duration)
-                        -> bool {
-        if let Some(ref nonce) = self.nonce {
-            if let Some(ts) = self.ts {
-                if let Some(ref mac) = self.mac {
-
-                    // first verify the MAC
-                    match Mac::new(key,
-                                   ts,
-                                   nonce,
-                                   method,
-                                   host,
-                                   port,
-                                   path,
-                                   match self.hash {
-                                       None => None,
-                                       Some(ref v) => Some(v),
-                                   },
-                                   match self.ext {
-                                       None => None,
-                                       Some(ref s) => Some(s),
-                                   }) {
-                        Ok(calculated_mac) => {
-                            if &calculated_mac != mac {
-                                return false;
-                            }
-                        }
-                        Err(_) => {
-                            return false;
-                        }
-                    };
-
-                    // then the timestamp
-                    let now = now().to_timespec();
-                    if now > ts {
-                        if now - ts > ts_skew {
-                            return false;
-                        }
-                    } else {
-                        if ts - now > ts_skew {
-                            return false;
-                        }
-                    }
-
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     /// Check a header component for validity.
@@ -308,17 +237,9 @@ impl FromStr for Header {
 #[cfg(test)]
 mod test {
     use super::Header;
-    use time::{now, Duration, Timespec};
+    use time::Timespec;
     use std::str::FromStr;
-    use request::Request;
-    use credentials::{Credentials, Key};
     use mac::Mac;
-    use ring::digest;
-
-    // this is a header from a real request using the JS Hawk library, to
-    // https://pulse.taskcluster.net:443/v1/namespaces with credentials "me" / "tok"
-    const REAL_HEADER: &'static str = "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", \
-                                       mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
 
     #[test]
     #[should_panic]
@@ -517,74 +438,5 @@ mod test {
         println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();
         assert!(s2 == s);
-    }
-
-    #[test]
-    fn test_validate_matches_generated() {
-        let req = Request::new()
-            .method("GET")
-            .path("/foo")
-            .host("example.com")
-            .port(443);
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new(vec![99u8; 32], &digest::SHA256),
-        };
-        let header =
-            req.generate_header_full(&credentials, now().to_timespec(), "nonny".to_string())
-                .unwrap();
-        assert!(header.validate_mac(&credentials.key,
-                                    "GET",
-                                    "example.com",
-                                    443,
-                                    "/foo",
-                                    Duration::minutes(1)));
-    }
-
-    #[test]
-    fn test_validate_real_request() {
-        let header = Header::from_str(REAL_HEADER).unwrap();
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
-        };
-        assert!(header.validate_mac(&credentials.key,
-                                    "GET",
-                                    "pulse.taskcluster.net",
-                                    443,
-                                    "/v1/namespaces",
-                                    // allow 1000 years skew, since this was a real request that
-                                    // happened back in 2017, when life was simple and carefree
-                                    Duration::weeks(52000)));
-    }
-
-    #[test]
-    fn test_validate_real_request_bad_creds() {
-        let header = Header::from_str(REAL_HEADER).unwrap();
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new("WRONG", &digest::SHA256),
-        };
-        assert!(!header.validate_mac(&credentials.key,
-                                     "GET",
-                                     "pulse.taskcluster.net",
-                                     443,
-                                     "/v1/namespaces",
-                                     Duration::weeks(52000)));
-    }
-
-    #[test]
-    fn test_validate_real_request_bad_req_info() {
-        let header = Header::from_str(REAL_HEADER).unwrap();
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
-        };
-        assert!(!header.validate_mac(&credentials.key,
-                                     "GET",
-                                     "pulse.taskcluster.net",
-                                     443,
-                                     "/v1/WRONGPATH",
-                                     Duration::weeks(52000)));
     }
 }

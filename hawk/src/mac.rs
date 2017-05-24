@@ -22,7 +22,7 @@ impl Mac {
                host: &str,
                port: u16,
                path: &str,
-               hash: Option<&Vec<u8>>,
+               hash: Option<&[u8]>,
                ext: Option<&str>)
                -> Result<Mac, HawkError> {
         let mut buffer: Vec<u8> = vec![];

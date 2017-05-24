@@ -16,6 +16,9 @@ This is a work-in-progress.
     * nonce validation (via callback)
     * content hash validation
 
+* Testing
+  * req with/without hash against header with/without hash
+
 * Client
   * experiment with adding an Authorizable trait and imlementing it for RequestBuilders, so `client.get().....authorizeHawk(..).send()`
   * adjust for clock skew
