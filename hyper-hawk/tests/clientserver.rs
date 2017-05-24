@@ -18,16 +18,21 @@ struct TestHandler {}
 
 impl server::Handler for TestHandler {
     fn handle(&self, req: server::Request, mut res: server::Response) {
+        // get the Authorization header the client sent
         let hdr: &header::Authorization<HawkScheme> = req.headers.get().unwrap();
 
+        // build a request object based on what we know (note: this would include a body
+        // hash if one was given)
+        let request = Request::new()
+            .method("GET")
+            .host("localhost")
+            .port(PORT)
+            .path("/resource");
+
         let key = Key::new(vec![1u8; 32], &SHA256);
-        hdr.validate(&key,
-                      "GET",
-                      "localhost",
-                      PORT,
-                      "/resource",
-                      time::Duration::minutes(1))
-            .unwrap();
+        if !request.validate(&hdr, &key, time::Duration::minutes(1)) {
+            panic!("header validation failed");
+        }
 
         let server_hdr = Header::new(hdr.id.clone(),
                                      None,

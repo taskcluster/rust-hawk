@@ -4,10 +4,11 @@ use time;
 use url::Url;
 use mac::make_mac;
 use header::Header;
-use credentials::Credentials;
+use credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
 use error::HawkError;
+use time::Duration;
 
 static EMPTY_STRING: &'static str = "";
 
@@ -162,6 +163,12 @@ impl<'a> Request<'a> {
                            None => None,
                            Some(v) => Some(v.to_string()),
                        }))
+    }
+
+    /// Validate that this header's signature matches the request
+    pub fn validate(&self, header: &Header, key: &Key, ts_skew: Duration) -> bool {
+        // TODO: test
+        header.validate_mac(key, self.method, self.host, self.port, self.path, ts_skew)
     }
 }
 
