@@ -2,8 +2,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::fmt;
 use std::str::FromStr;
-use ring::constant_time;
-use mac::make_mac;
+use mac::Mac;
 use credentials::Key;
 use error::HawkError;
 use time::{now, Timespec, Duration};
@@ -16,7 +15,7 @@ pub struct Header {
     pub id: Option<String>,
     pub ts: Option<Timespec>,
     pub nonce: Option<String>,
-    pub mac: Option<Vec<u8>>,
+    pub mac: Option<Mac>,
     pub ext: Option<String>,
     pub hash: Option<Vec<u8>>,
     pub app: Option<String>,
@@ -31,7 +30,7 @@ impl Header {
     pub fn new<S>(id: Option<S>,
                   ts: Option<Timespec>,
                   nonce: Option<S>,
-                  mac: Option<Vec<u8>>,
+                  mac: Option<Mac>,
                   ext: Option<S>,
                   hash: Option<Vec<u8>>,
                   app: Option<S>,
@@ -92,7 +91,7 @@ impl Header {
                 if let Some(ref mac) = self.mac {
 
                     // first verify the MAC
-                    match make_mac(key,
+                    match Mac::new(key,
                                    ts,
                                    nonce,
                                    method,
@@ -108,12 +107,8 @@ impl Header {
                                        Some(ref s) => Some(s),
                                    }) {
                         Ok(calculated_mac) => {
-                            match constant_time::verify_slices_are_equal(&calculated_mac[..],
-                                                                         &mac[..]) {
-                                Ok(_) => (),
-                                Err(_) => {
-                                    return false;
-                                }
+                            if &calculated_mac != mac {
+                                return false;
                             }
                         }
                         Err(_) => {
@@ -289,7 +284,10 @@ impl FromStr for Header {
                    Some(nonce) => Some(nonce.to_string()),
                    None => None,
                },
-               mac: mac,
+               mac: match mac {
+                   Some(mac) => Some(Mac::from(mac)),
+                   None => None,
+               },
                ext: match ext {
                    Some(ext) => Some(ext.to_string()),
                    None => None,
@@ -314,6 +312,7 @@ mod test {
     use std::str::FromStr;
     use request::Request;
     use credentials::{Credentials, Key};
+    use mac::Mac;
     use ring::digest;
 
     // this is a header from a real request using the JS Hawk library, to
@@ -327,7 +326,7 @@ mod test {
         Header::new(Some("ab\"cdef"),
                     Some(Timespec::new(1234, 0)),
                     Some("nonce"),
-                    Some(vec![]),
+                    Some(Mac::from(vec![])),
                     Some("ext"),
                     None,
                     None,
@@ -340,7 +339,7 @@ mod test {
         Header::new(Some("abcdef"),
                     Some(Timespec::new(1234, 0)),
                     Some("no\"nce"),
-                    Some(vec![]),
+                    Some(Mac::from(vec![])),
                     Some("ext"),
                     None,
                     None,
@@ -353,7 +352,7 @@ mod test {
         Header::new(Some("abcdef"),
                     Some(Timespec::new(1234, 0)),
                     Some("nonce"),
-                    Some(vec![]),
+                    Some(Mac::from(vec![])),
                     Some("ex\"t"),
                     None,
                     None,
@@ -366,7 +365,7 @@ mod test {
         Header::new(Some("abcdef"),
                     Some(Timespec::new(1234, 0)),
                     Some("nonce"),
-                    Some(vec![]),
+                    Some(Mac::from(vec![])),
                     None,
                     None,
                     Some("a\"pp"),
@@ -379,7 +378,7 @@ mod test {
         Header::new(Some("abcdef"),
                     Some(Timespec::new(1234, 0)),
                     Some("nonce"),
-                    Some(vec![]),
+                    Some(Mac::from(vec![])),
                     None,
                     None,
                     None,
@@ -398,9 +397,9 @@ mod test {
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));
         assert!(s.mac ==
-                Some(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150, 194, 55, 135,
-                          206, 48, 6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44,
-                          1]));
+                Some(Mac::from(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150,
+                                    194, 55, 135, 206, 48, 6, 93, 75, 75, 52, 140, 102, 163,
+                                    91, 233, 50, 135, 233, 44, 1])));
         assert!(s.ext == Some("some-app-ext-data".to_string()));
         assert!(s.app == Some("my-app".to_string()));
         assert!(s.dlg == Some("my-authority".to_string()));
@@ -428,9 +427,9 @@ mod test {
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("abc".to_string()));
         assert!(s.mac ==
-                Some(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150, 194, 55, 135,
-                          206, 48, 6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44,
-                          1]));
+                Some(Mac::from(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150,
+                                    194, 55, 135, 206, 48, 6, 93, 75, 75, 52, 140, 102, 163,
+                                    91, 233, 50, 135, 233, 44, 1])));
         assert!(s.ext == None);
         assert!(s.app == None);
         assert!(s.dlg == None);
@@ -446,9 +445,9 @@ mod test {
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));
         assert!(s.mac ==
-                Some(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150, 194, 55, 135,
-                          206, 48, 6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44,
-                          1]));
+                Some(Mac::from(vec![233, 30, 43, 87, 152, 132, 248, 211, 232, 202, 111, 150,
+                                    194, 55, 135, 206, 48, 6, 93, 75, 75, 52, 140, 102, 163,
+                                    91, 233, 50, 135, 233, 44, 1])));
         assert!(s.ext == Some("some-app-ext-data".to_string()));
         assert!(s.app == None);
         assert!(s.dlg == None);
@@ -468,9 +467,9 @@ mod test {
         let s = Header::new(Some("dh37fgj492je"),
                             Some(Timespec::new(1353832234, 0)),
                             Some("j4h3g2"),
-                            Some(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                      176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200,
-                                      66, 209, 57, 63, 38, 83]),
+                            Some(Mac::from(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94,
+                                                43, 118, 176, 65, 69, 86, 4, 156, 184, 85, 107,
+                                                249, 242, 172, 200, 66, 209, 57, 63, 38, 83])),
                             None,
                             None,
                             None,
@@ -487,9 +486,9 @@ mod test {
         let s = Header::new(Some("dh37fgj492je"),
                             Some(Timespec::new(1353832234, 0)),
                             Some("j4h3g2"),
-                            Some(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                      176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200,
-                                      66, 209, 57, 63, 38, 83]),
+                            Some(Mac::from(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94,
+                                                43, 118, 176, 65, 69, 86, 4, 156, 184, 85, 107,
+                                                249, 242, 172, 200, 66, 209, 57, 63, 38, 83])),
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
@@ -507,9 +506,9 @@ mod test {
         let s = Header::new(Some("dh37fgj492je"),
                             Some(Timespec::new(1353832234, 0)),
                             Some("j4h3g2"),
-                            Some(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94, 43, 118,
-                                      176, 65, 69, 86, 4, 156, 184, 85, 107, 249, 242, 172, 200,
-                                      66, 209, 57, 63, 38, 83]),
+                            Some(Mac::from(vec![8, 35, 182, 149, 42, 111, 33, 192, 19, 22, 94,
+                                                43, 118, 176, 65, 69, 86, 4, 156, 184, 85, 107,
+                                                249, 242, 172, 200, 66, 209, 57, 63, 38, 83])),
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),

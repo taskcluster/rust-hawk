@@ -2,7 +2,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
 use time;
 use url::Url;
-use mac::make_mac;
+use mac::Mac;
 use header::Header;
 use credentials::{Credentials, Key};
 use rand;
@@ -134,7 +134,7 @@ impl<'a> Request<'a> {
                 Some(&hash_vec)
             }
         };
-        let mac = make_mac(&credentials.key,
+        let mac = Mac::new(&credentials.key,
                            ts,
                            &nonce,
                            self.method,
@@ -271,9 +271,9 @@ mod test {
                        id: Some("me".to_string()),
                        ts: Some(Timespec::new(1000, 100)),
                        nonce: Some("nonny".to_string()),
-                       mac: Some(vec![122, 47, 2, 53, 195, 247, 185, 107, 133, 250, 61, 134, 200,
-                                      35, 118, 94, 48, 175, 237, 108, 60, 71, 4, 2, 244, 66, 41,
-                                      172, 91, 7, 233, 140]),
+                       mac: Some(Mac::from(vec![122, 47, 2, 53, 195, 247, 185, 107, 133, 250,
+                                                61, 134, 200, 35, 118, 94, 48, 175, 237, 108,
+                                                60, 71, 4, 2, 244, 66, 41, 172, 91, 7, 233, 140])),
                        ext: None,
                        hash: None,
                        app: None,
@@ -305,9 +305,10 @@ mod test {
                        id: Some("me".to_string()),
                        ts: Some(Timespec::new(1000, 100)),
                        nonce: Some("nonny".to_string()),
-                       mac: Some(vec![72, 123, 243, 214, 145, 81, 129, 54, 183, 90, 22, 136, 192,
-                                      146, 208, 53, 216, 138, 145, 94, 175, 204, 217, 8, 77, 16,
-                                      202, 50, 10, 144, 133, 162]),
+                       mac: Some(Mac::from(vec![72, 123, 243, 214, 145, 81, 129, 54, 183, 90,
+                                                22, 136, 192, 146, 208, 53, 216, 138, 145, 94,
+                                                175, 204, 217, 8, 77, 16, 202, 50, 10, 144, 133,
+                                                162])),
                        ext: Some("ext".to_string()),
                        hash: Some(hash.clone()),
                        app: Some("app".to_string()),
