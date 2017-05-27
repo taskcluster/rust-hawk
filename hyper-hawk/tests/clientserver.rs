@@ -15,40 +15,6 @@ use std::thread;
 
 const PORT: u16 = 9981;
 
-struct TestHandler {}
-
-impl server::Handler for TestHandler {
-    fn handle(&self, req: server::Request, mut res: server::Response) {
-        // get the Authorization header the client sent
-        let hdr: &header::Authorization<HawkScheme> = req.headers.get().unwrap();
-
-        // build a request object based on what we know (note: this would include a body
-        // hash if one was given)
-        let request = Request::new()
-            .method("GET")
-            .host("localhost")
-            .port(PORT)
-            .path("/resource");
-
-        let key = Key::new(vec![1u8; 32], &SHA256);
-        if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {
-            panic!("header validation failed");
-        }
-
-        let response = request.get_response(&hdr, None, None);
-        let server_hdr = response.generate_header(&key).unwrap();
-        res.headers_mut()
-            .set(ServerAuthorization(HawkScheme(server_hdr)));
-
-        let body = b"OK";
-        res.headers_mut()
-            .set(header::ContentLength(body.len() as u64));
-
-        let mut res = res.start().unwrap();
-        res.write_all(body).unwrap();
-    }
-}
-
 fn client() {
     let credentials = Credentials {
         id: "test-client".to_string(),
@@ -58,8 +24,7 @@ fn client() {
     let request = Request::new().method("GET").url(&url).unwrap();
     let mut headers = hyper::header::Headers::new();
     let header = request.generate_header(&credentials).unwrap();
-    // TODO: when TODO's are fixed, send and validate server responses in crate example
-    headers.set(header::Authorization(HawkScheme(header.clone()))); // TODO: no clone..
+    headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();
     let mut res = client
@@ -75,19 +40,64 @@ fn client() {
 
     let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
 
-    // TODO: None -> server_hdr values / hashed
-    let response = request.get_response(&header, None, None);
-
-    // most fields are empty
+    // most fields in `Server-Authorization: Hawk` are omitted
     assert_eq!(server_hdr.id, None);
     assert_eq!(server_hdr.ts, None);
     assert_eq!(server_hdr.nonce, None);
-    assert_eq!(server_hdr.ext, None);
+    assert_eq!(server_hdr.ext, Some("server-ext".to_string()));
     assert_eq!(server_hdr.hash, None);
     assert_eq!(server_hdr.app, None);
     assert_eq!(server_hdr.dlg, None);
+
+    // TODO: this is UGLY - how can we convert Option<x> to Option<&x> automatically?
+    let hash = match server_hdr.hash {
+        Some(ref h) => Some(&h[..]),
+        None => None,
+    };
+    let ext = match server_hdr.ext {
+        Some(ref e) => Some(&e[..]),
+        None => None,
+    };
+    let response = request.make_response(&header, hash, ext);
+
     if !response.validate_header(&server_hdr, &credentials.key) {
         panic!("authentication of response header failed");
+    }
+}
+
+struct TestHandler {}
+
+impl server::Handler for TestHandler {
+    fn handle(&self, req: server::Request, mut res: server::Response) {
+        // get the Authorization header the client sent
+        let hdr: &header::Authorization<HawkScheme> = req.headers.get().unwrap();
+
+        // build a request object based on what we know (note: this would include a body
+        // hash if one was given)
+        let request = Request::new()
+            .method("GET")
+            .host("localhost")
+            .port(PORT)
+            .path("/resource");
+
+        assert_eq!(hdr.id, Some("test-client".to_string()));
+        assert_eq!(hdr.ext, None);
+        let key = Key::new(vec![1u8; 32], &SHA256);
+        if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {
+            panic!("header validation failed");
+        }
+
+        let response = request.make_response(&hdr, None, Some("server-ext"));
+        let server_hdr = response.generate_header(&key).unwrap();
+        res.headers_mut()
+            .set(ServerAuthorization(HawkScheme(server_hdr)));
+
+        let body = b"OK";
+        res.headers_mut()
+            .set(header::ContentLength(body.len() as u64));
+
+        let mut res = res.start().unwrap();
+        res.write_all(body).unwrap();
     }
 }
 

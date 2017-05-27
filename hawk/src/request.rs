@@ -250,11 +250,11 @@ impl<'a> Request<'a> {
 
     /// Get a Response instance for a response to this request.  This is a convenience
     /// wrapper around `Response::from_request_header`.
-    pub fn get_response(&self,
-                        req_header: &'a Header,
-                        hash: Option<&'a [u8]>,
-                        ext: Option<&'a str>)
-                        -> Response<'a> {
+    pub fn make_response(&self,
+                         req_header: &'a Header,
+                         hash: Option<&'a [u8]>,
+                         ext: Option<&'a str>)
+                         -> Response<'a> {
         Response::from_request_header(req_header,
                                       self.method,
                                       self.host,

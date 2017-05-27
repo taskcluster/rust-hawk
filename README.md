@@ -20,6 +20,10 @@ This is a work-in-progress.
 * Testing
   * req with/without hash against header with/without hash
 
+* Misc
+  * rename request/response methods?
+    * `generate_header` -> `make_header`
+
 * Client
   * experiment with adding an Authorizable trait and imlementing it for RequestBuilders, so `client.get().....authorizeHawk(..).send()`
   * adjust for clock skew
