@@ -8,6 +8,9 @@ use time::Timespec;
 
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
+/// Headers can be derived froms trings using the `FromStr` trait, and formatted into a
+/// string using the `fmt_header` method.
+///
 /// All fields are optional, although for specific purposes some fields must be present.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Header {

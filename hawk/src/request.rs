@@ -18,6 +18,8 @@ static EMPTY_STRING: &'static str = "";
 /// several of the fields in this structure fixed.  Cloning the structure with these fields
 /// applied is a convenient way to avoid repeating those fields.
 ///
+/// A request can be used on the client, to generate a header, or on the server, to validate one.
+///
 /// # Examples
 ///
 /// ```
@@ -26,6 +28,8 @@ static EMPTY_STRING: &'static str = "";
 /// let request1 = baseRequest.clone().method("POST").path("/api/user");
 /// let request2 = baseRequest.clone().path("/api/users");
 /// ```
+///
+/// See the documentation in the crate root for examples of creating and validating headers.
 #[derive(Debug, Clone)]
 pub struct Request<'a> {
     method: &'a str,
@@ -157,20 +161,18 @@ impl<'a> Request<'a> {
                        }))
     }
 
-    /// Validate that the header's MAC field matches that calculated using the other header fields
-    /// and the given request information.
+    /// Validate the given header.  This validates that the `mac` field matches that calculated
+    /// using the other header fields and the given request information.
     ///
     /// The header's timestamp is verified to be within `ts_skew` of the current time.  If any of
     /// the required header fields are missing, the method will return false.
     ///
     /// It is up to the caller to examine the header's `id` field and supply the corresponding key.
     ///
-    /// Note that this is not a complete validation of a request!  It is still up to the caller to
-    /// validate the accuracy of the header information.  Notably:
+    /// If desired, it is up to the caller to validate that `nonce` has not been used before.
     ///
-    ///  * `nonce` has not been used before (optional)
-    ///  * `request.hash` must be calculated based on the request body, not copied from the request
-    ///    header
+    /// Note that `request.hash` must be calculated based on the request body, not copied from the
+    /// request header.
     pub fn validate_header(&self, header: &Header, key: &Key, ts_skew: Duration) -> bool {
         // extract required fields, returning early if they are not present
         let ts = match header.ts {
