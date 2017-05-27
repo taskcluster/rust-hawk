@@ -4,7 +4,7 @@ extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
 
-use hawk::{Request, Header, Credentials, Key, SHA256};
+use hawk::{Request, Credentials, Key, SHA256};
 use std::io::{Read, Write};
 use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
@@ -58,8 +58,8 @@ fn client() {
     let request = Request::new().method("GET").url(&url).unwrap();
     let mut headers = hyper::header::Headers::new();
     let header = request.generate_header(&credentials).unwrap();
-    let nonce = header.nonce.clone();
-    headers.set(header::Authorization(HawkScheme(header)));
+    // TODO: when TODO's are fixed, send and validate server responses in crate example
+    headers.set(header::Authorization(HawkScheme(header.clone()))); // TODO: no clone..
 
     let client = Client::new();
     let mut res = client
@@ -74,6 +74,10 @@ fn client() {
     assert!(body == "OK");
 
     let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
+
+    // TODO: None -> server_hdr values / hashed
+    let response = request.get_response(&header, None, None);
+
     // most fields are empty
     assert_eq!(server_hdr.id, None);
     assert_eq!(server_hdr.ts, None);
@@ -82,7 +86,9 @@ fn client() {
     assert_eq!(server_hdr.hash, None);
     assert_eq!(server_hdr.app, None);
     assert_eq!(server_hdr.dlg, None);
-    // TODO: response.validate_header(&server_hdr, &credentials.key)
+    if !response.validate_header(&server_hdr, &credentials.key) {
+        panic!("authentication of response header failed");
+    }
 }
 
 #[test]

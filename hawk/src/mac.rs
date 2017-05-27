@@ -15,7 +15,8 @@ use time;
 pub struct Mac(Vec<u8>);
 
 impl Mac {
-    pub fn new(key: &Key,
+    pub fn new(response: bool,
+               key: &Key,
                ts: time::Timespec,
                nonce: &str,
                method: &str,
@@ -27,7 +28,11 @@ impl Mac {
                -> Result<Mac, HawkError> {
         let mut buffer: Vec<u8> = vec![];
 
-        write!(buffer, "hawk.1.header\n")?;
+        if response {
+            write!(buffer, "hawk.1.response\n")?;
+        } else {
+            write!(buffer, "hawk.1.header\n")?;
+        }
         write!(buffer, "{}\n", ts.sec)?;
         write!(buffer, "{}\n", nonce)?;
         write!(buffer, "{}\n", method)?;
@@ -97,7 +102,8 @@ mod test {
     #[test]
     fn test_make_mac() {
         let key = key();
-        let mac = Mac::new(&key,
+        let mac = Mac::new(false,
+                           &key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
@@ -117,7 +123,8 @@ mod test {
     fn test_make_mac_hash() {
         let key = key();
         let hash = vec![1, 2, 3, 4, 5];
-        let mac = Mac::new(&key,
+        let mac = Mac::new(false,
+                           &key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",
@@ -137,7 +144,8 @@ mod test {
     fn test_make_mac_ext() {
         let key = key();
         let ext = "ext-data".to_string();
-        let mac = Mac::new(&key,
+        let mac = Mac::new(false,
+                           &key,
                            Timespec::new(1000, 100),
                            "nonny",
                            "POST",

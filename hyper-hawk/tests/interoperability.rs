@@ -9,7 +9,7 @@ use hawk::{Request, Credentials, Key, SHA256};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
-use hyper_hawk::HawkScheme;
+use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
 use hyper::header;
 use url::Url;
@@ -59,7 +59,7 @@ fn client_with_header() {
         .ext(Some("ext-content"));
     let mut headers = hyper::header::Headers::new();
     let header = request.generate_header(&credentials).unwrap();
-    headers.set(header::Authorization(HawkScheme(header)));
+    headers.set(header::Authorization(HawkScheme(header.clone()))); // TODO: no clone..
 
     let client = Client::new();
     let mut res = client
@@ -73,7 +73,15 @@ fn client_with_header() {
     assert!(res.status == hyper::Ok);
     assert!(body == "Hello Steve ext-content");
 
-    // TODO: validate server's signature
+    // validate server's signature
+    {
+        let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
+        println!("server_hdr: {:?}", server_hdr);
+        let response = request.get_response(&header, None, None);
+        if !response.validate_header(&server_hdr, &credentials.key) {
+            panic!("authentication of response header failed");
+        }
+    }
 
     drop(res);
     drop(client); // close the kept-alive connection

@@ -50,7 +50,8 @@ impl<'a> Response<'a> {
         // TODO: use .ok_or here (but this is hard with `ref nonce`)
         if let Some(ts) = self.req_header.ts {
             if let Some(ref nonce) = self.req_header.nonce {
-                mac = Mac::new(&key,
+                mac = Mac::new(true,
+                               &key,
                                ts,
                                nonce,
                                self.method,
@@ -82,7 +83,71 @@ impl<'a> Response<'a> {
                        None,
                        None))
     }
+
+    pub fn validate_header(&self, response_header: &Header, key: &Key) -> bool {
+        // extract required fields, returning early if they are not present
+        let ts = match self.req_header.ts {
+            Some(ts) => ts,
+            None => {
+                return false;
+            }
+        };
+        let nonce = match self.req_header.nonce {
+            Some(ref nonce) => nonce,
+            None => {
+                return false;
+            }
+        };
+        let header_mac = match response_header.mac {
+            Some(ref mac) => mac,
+            None => {
+                return false;
+            }
+        };
+
+        // first verify the MAC
+        match Mac::new(true,
+                       key,
+                       ts,
+                       nonce,
+                       self.method,
+                       self.host,
+                       self.port,
+                       self.path,
+                       self.hash,
+                       self.ext) {
+            Ok(calculated_mac) => {
+                if &calculated_mac != header_mac {
+                    return false;
+                }
+            }
+            Err(_) => {
+                return false;
+            }
+        };
+
+        // ..then the hashes
+        match (&self.hash, &response_header.hash) {
+            (&Some(rh), &Some(ref hh)) => {
+                if rh != &hh[..] {
+                    return false;
+                }
+            }
+            (&Some(_), &None) => {
+                return false;
+            }
+            (&None, &Some(_)) => {
+                return false;
+            }
+            (&None, &None) => (),
+        }
+
+        // NOTE: the timestamp self.req_header.ts was generated locally, so
+        // there is no need to verify it
+
+        true
+    }
 }
 
 #[cfg(test)]
-mod test {}
+mod test {} // TODO: tests

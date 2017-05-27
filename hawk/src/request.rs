@@ -131,7 +131,8 @@ impl<'a> Request<'a> {
                                 ts: time::Timespec,
                                 nonce: String)
                                 -> Result<Header, HawkError> {
-        let mac = Mac::new(&credentials.key,
+        let mac = Mac::new(false,
+                           &credentials.key,
                            ts,
                            &nonce,
                            self.method,
@@ -196,7 +197,8 @@ impl<'a> Request<'a> {
         };
 
         // first verify the MAC
-        match Mac::new(key,
+        match Mac::new(false,
+                       key,
                        ts,
                        nonce,
                        self.method,
@@ -246,6 +248,8 @@ impl<'a> Request<'a> {
         true
     }
 
+    /// Get a Response instance for a response to this request.  This is a convenience
+    /// wrapper around `Response::from_request_header`.
     pub fn get_response(&self,
                         req_header: &'a Header,
                         hash: Option<&'a [u8]>,
