@@ -98,6 +98,9 @@ pub use credentials::{Credentials, Key};
 mod request;
 pub use request::Request;
 
+mod response;
+pub use response::Response;
+
 mod error;
 pub use error::HawkError;
 

@@ -4,6 +4,7 @@ use time;
 use url::Url;
 use mac::Mac;
 use header::Header;
+use response::Response;
 use credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
@@ -243,6 +244,20 @@ impl<'a> Request<'a> {
         }
 
         true
+    }
+
+    pub fn get_response(&self,
+                        req_header: &'a Header,
+                        hash: Option<&'a [u8]>,
+                        ext: Option<&'a str>)
+                        -> Response<'a> {
+        Response::from_request_header(req_header,
+                                      self.method,
+                                      self.host,
+                                      self.port,
+                                      self.path,
+                                      hash,
+                                      ext)
     }
 }
 
