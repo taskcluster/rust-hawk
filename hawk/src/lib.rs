@@ -14,7 +14,7 @@
 //! extern crate time;
 //! extern crate hawk;
 //!
-//! use hawk::{Request, Credentials, Key, SHA256};
+//! use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
 //!
 //! fn main() {
 //!     // provide the Hawk id and key
@@ -23,12 +23,15 @@
 //!         key: Key::new(vec![99u8; 32], &SHA256),
 //!     };
 //!
+//!     let payload_hash = PayloadHasher::hash("text/plain", &SHA256, "request-body");
+//!
 //!     // provide the details of the request to be authorized
 //!     let request = Request::new()
-//!         .method("GET")
+//!         .method("POST")
 //!         .host("example.com")
 //!         .port(80)
-//!         .path("/v1/users");
+//!         .path("/v1/users")
+//!         .hash(Some(&payload_hash));
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
 //!     // so the MAC will be different on every request.
@@ -37,6 +40,7 @@
 //!     // the header would the be attached to the request
 //!     assert_eq!(header.id.unwrap(), "test-client");
 //!     assert_eq!(header.mac.unwrap().len(), 32);
+//!     assert_eq!(header.hash.unwrap().len(), 32);
 //! }
 //! ```
 //!
@@ -103,6 +107,9 @@ pub use response::Response;
 
 mod error;
 pub use error::HawkError;
+
+mod payload;
+pub use payload::PayloadHasher;
 
 pub mod mac;
 
