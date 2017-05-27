@@ -23,7 +23,7 @@ fn client() {
     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
     let request = Request::new().method("GET").url(&url).unwrap();
     let mut headers = hyper::header::Headers::new();
-    let header = request.generate_header(&credentials).unwrap();
+    let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();
@@ -88,7 +88,7 @@ impl server::Handler for TestHandler {
         }
 
         let response = request.make_response(&hdr, None, Some("server-ext"));
-        let server_hdr = response.generate_header(&key).unwrap();
+        let server_hdr = response.make_header(&key).unwrap();
         res.headers_mut()
             .set(ServerAuthorization(HawkScheme(server_hdr)));
 

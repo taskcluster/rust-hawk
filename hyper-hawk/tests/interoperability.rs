@@ -58,7 +58,7 @@ fn client_with_header() {
         .unwrap()
         .ext(Some("ext-content"));
     let mut headers = hyper::header::Headers::new();
-    let header = request.generate_header(&credentials).unwrap();
+    let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();

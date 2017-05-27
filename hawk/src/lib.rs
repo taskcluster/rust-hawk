@@ -32,7 +32,7 @@
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
 //!     // so the MAC will be different on every request.
-//!     let header = request.generate_header(&credentials).unwrap();
+//!     let header = request.make_header(&credentials).unwrap();
 //!
 //!     // the header would the be attached to the request
 //!     assert_eq!(header.id.unwrap(), "test-client");

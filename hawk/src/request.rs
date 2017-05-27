@@ -119,18 +119,18 @@ impl<'a> Request<'a> {
 
     /// Create a new Header for this request, inventing a new nonce and setting the
     /// timestamp to the current time.
-    pub fn generate_header(&self, credentials: &Credentials) -> Result<Header, HawkError> {
+    pub fn make_header(&self, credentials: &Credentials) -> Result<Header, HawkError> {
         let nonce = random_string(10);
-        self.generate_header_full(credentials, time::now().to_timespec(), nonce)
+        self.make_header_full(credentials, time::now().to_timespec(), nonce)
     }
 
-    /// Similar to `generate_header`, but allowing specification of the timestamp
+    /// Similar to `make_header`, but allowing specification of the timestamp
     /// and nonce.
-    pub fn generate_header_full(&self,
-                                credentials: &Credentials,
-                                ts: time::Timespec,
-                                nonce: String)
-                                -> Result<Header, HawkError> {
+    pub fn make_header_full(&self,
+                            credentials: &Credentials,
+                            ts: time::Timespec,
+                            nonce: String)
+                            -> Result<Header, HawkError> {
         let mac = Mac::new(false,
                            &credentials.key,
                            ts,
@@ -352,7 +352,7 @@ mod test {
     }
 
     #[test]
-    fn test_generate_header_full() {
+    fn test_make_header_full() {
         let req = Request::new()
             .method("GET")
             .path("/foo")
@@ -363,7 +363,7 @@ mod test {
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
         let header =
-            req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
+            req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
                 .unwrap();
         assert_eq!(header,
                    Header {
@@ -381,7 +381,7 @@ mod test {
     }
 
     #[test]
-    fn test_generate_header_full_with_optional_fields() {
+    fn test_make_header_full_with_optional_fields() {
         let hash = vec![0u8];
         let req = Request::new()
             .method("GET")
@@ -397,7 +397,7 @@ mod test {
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
         let header =
-            req.generate_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
+            req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
                 .unwrap();
         assert_eq!(header,
                    Header {
@@ -426,9 +426,8 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header =
-            req.generate_header_full(&credentials, now().to_timespec(), "nonny".to_string())
-                .unwrap();
+        let header = req.make_header_full(&credentials, now().to_timespec(), "nonny".to_string())
+            .unwrap();
         assert!(req.validate_header(&header, &credentials.key, Duration::minutes(1)));
     }
 

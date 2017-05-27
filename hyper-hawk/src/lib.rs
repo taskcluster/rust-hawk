@@ -27,7 +27,7 @@
 //!     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
 //!     let request = Request::new().method("GET").url(&url).unwrap();
 //!     let mut headers = hyper::header::Headers::new();
-//!     let header = request.generate_header(&credentials).unwrap();
+//!     let header = request.make_header(&credentials).unwrap();
 //!     // note that HawkScheme must own its header, with no embedded references, because
 //!     // it is passed to headers.set, which uses Any, which forbids non-'static references.
 //!     headers.set(header::Authorization(HawkScheme(header.clone())));
@@ -82,7 +82,7 @@
 //!         }
 //!
 //!         let response = request.make_response(&hdr, None, Some("my-ext"));
-//!         let server_hdr = response.generate_header(&key).unwrap();
+//!         let server_hdr = response.make_header(&key).unwrap();
 //!         res.headers_mut()
 //!             .set(ServerAuthorization(HawkScheme(server_hdr)));
 //!

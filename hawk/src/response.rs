@@ -45,7 +45,7 @@ impl<'a> Response<'a> {
     }
 
     /// Create a new Header for this response, based on the given request and request header
-    pub fn generate_header(&self, key: &Key) -> Result<Header, HawkError> {
+    pub fn make_header(&self, key: &Key) -> Result<Header, HawkError> {
         let mac;
         // TODO: use .ok_or here (but this is hard with `ref nonce`)
         if let Some(ts) = self.req_header.ts {
