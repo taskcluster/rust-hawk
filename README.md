@@ -8,7 +8,7 @@ This is a Rust implementation of [Hawk](https://github.com/hueniverse/hawk).
 This is a work-in-progress.
 
 * Protocol Fidelity
-  * bidirectional support (server validation); requires
+  * [DONE] bidirectional support (server validation); requires
     * [DONE] nonstandard "Server-Authorization" header
     * [DONE] abbreviated Hawk authorization (just mac and maybe hash and/or ext) with defaults coming from request header
   * payload hash calculation
