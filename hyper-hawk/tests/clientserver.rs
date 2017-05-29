@@ -23,6 +23,8 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
 
     let payload_hash;
     let mut request = Request::new().method("POST").url(&url).unwrap();
+    // for purposes of the test, we pretend we're using port 9999
+    request = request.port(9999);
 
     if send_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
@@ -74,7 +76,6 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
 struct TestHandler {
     require_hash: bool,
     send_hash: bool,
-    port: u16,
 }
 
 impl server::Handler for TestHandler {
@@ -91,7 +92,7 @@ impl server::Handler for TestHandler {
         let mut request = Request::new()
             .method("POST")
             .host("localhost")
-            .port(self.port)
+            .port(9999)
             .path("/resource");
 
         // add a body hash, if we require such a thing
@@ -129,17 +130,18 @@ impl server::Handler for TestHandler {
 fn run_client_server(client_send_hash: bool,
                      server_require_hash: bool,
                      server_send_hash: bool,
-                     client_require_hash: bool,
-                     port: u16) {
+                     client_require_hash: bool) {
     let handler = TestHandler {
         require_hash: server_require_hash,
         send_hash: server_send_hash,
-        port: port,
     };
-    let server = server::Server::http(("127.0.0.1", port)).unwrap();
+    let mut server = server::Server::http(("127.0.0.1", 0)).unwrap();
+    let local_address = server.local_addr().unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
     let client_thread =
-        thread::spawn(move || { client(client_send_hash, client_require_hash, port); });
+        thread::spawn(move || {
+                          client(client_send_hash, client_require_hash, local_address.port());
+                      });
 
     // finish both threads
     let client_res = client_thread.join();
@@ -151,34 +153,32 @@ fn run_client_server(client_send_hash: bool,
     }
 }
 
-// Each test uses a different port, since the tests run in parallel.
-
 #[test]
 fn no_hashes() {
-    run_client_server(false, false, false, false, 9001);
+    run_client_server(false, false, false, false);
 }
 
 #[test]
 fn client_sends() {
-    run_client_server(true, false, false, false, 9002);
+    run_client_server(true, false, false, false);
 }
 
 #[test]
 fn server_requires() {
-    run_client_server(true, true, false, false, 9003);
+    run_client_server(true, true, false, false);
 }
 
 #[test]
 fn server_sends() {
-    run_client_server(true, true, true, false, 9004);
+    run_client_server(true, true, true, false);
 }
 
 #[test]
 fn client_requires() {
-    run_client_server(true, true, true, true, 9005);
+    run_client_server(true, true, true, true);
 }
 
 #[test]
 fn response_hash_only() {
-    run_client_server(false, false, true, true, 9006);
+    run_client_server(false, false, true, true);
 }
