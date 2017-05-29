@@ -19,16 +19,25 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
         key: Key::new(vec![1u8; 32], &SHA256),
     };
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
-    let request = Request::new().method("POST").url(&url).unwrap();
+    let body = "foo=bar";
+
+    let payload_hash;
+    let mut request = Request::new().method("POST").url(&url).unwrap();
+
+    if send_hash {
+        payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        request = request.hash(Some(&payload_hash));
+    }
+
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
-    // TODO: how to send a body here?
     let client = Client::new();
     let mut res = client
         .post(url.as_str())
         .headers(headers)
+        .body(body)
         .send()
         .unwrap();
 
@@ -52,7 +61,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
 
     let payload_hash;
     let mut response = request.make_response(&header);
-    if (require_hash) {
+    if require_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
         response = response.hash(&payload_hash);
     }
@@ -69,17 +78,27 @@ struct TestHandler {
 }
 
 impl server::Handler for TestHandler {
-    fn handle(&self, req: server::Request, mut res: server::Response) {
+    fn handle(&self, mut req: server::Request, mut res: server::Response) {
+        // get the body
+        let mut body = String::new();
+        req.read_to_string(&mut body).unwrap();
+
         // get the Authorization header the client sent
         let hdr: &header::Authorization<HawkScheme> = req.headers.get().unwrap();
 
-        // build a request object based on what we know (note: this would include a body
-        // hash if one was given)
-        let request = Request::new()
+        // build a request object based on what we know
+        let payload_hash;
+        let mut request = Request::new()
             .method("POST")
             .host("localhost")
             .port(self.port)
             .path("/resource");
+
+        // add a body hash, if we require such a thing
+        if self.require_hash {
+            payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+            request = request.hash(Some(&payload_hash));
+        }
 
         assert_eq!(hdr.id, Some("test-client".to_string()));
         assert_eq!(hdr.ext, None);
@@ -91,7 +110,7 @@ impl server::Handler for TestHandler {
         let body = "OK".as_bytes();
         let payload_hash;
         let mut response = request.make_response(&hdr).ext("server-ext");
-        if (self.send_hash) {
+        if self.send_hash {
             payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body);
             response = response.hash(&payload_hash);
         }
@@ -107,7 +126,6 @@ impl server::Handler for TestHandler {
     }
 }
 
-// TODO: actually send/require
 fn run_client_server(client_send_hash: bool,
                      server_require_hash: bool,
                      server_send_hash: bool,
@@ -132,6 +150,8 @@ fn run_client_server(client_send_hash: bool,
         panic!("client failed");
     }
 }
+
+// Each test uses a different port, since the tests run in parallel.
 
 #[test]
 fn no_hashes() {
