@@ -173,8 +173,8 @@ impl<'a> Request<'a> {
     ///
     /// If desired, it is up to the caller to validate that `nonce` has not been used before.
     ///
-    /// Note that `request.hash` must be calculated based on the request body, not copied from the
-    /// request header.
+    /// If a hash has been supplied, then the header must contain a matching hash. Note that this
+    /// hash must be calculated based on the request body, not copied from the request header!
     pub fn validate_header(&self, header: &Header, key: &Key, ts_skew: Duration) -> bool {
         // extract required fields, returning early if they are not present
         let ts = match header.ts {
@@ -195,6 +195,14 @@ impl<'a> Request<'a> {
                 return false;
             }
         };
+        let header_hash = match header.hash {
+            Some(ref hash) => Some(&hash[..]),
+            None => None,
+        };
+        let header_ext = match header.ext {
+            Some(ref ext) => Some(&ext[..]),
+            None => None,
+        };
 
         // first verify the MAC
         match Mac::new(false,
@@ -205,8 +213,8 @@ impl<'a> Request<'a> {
                        self.host,
                        self.port,
                        self.path,
-                       self.hash,
-                       self.ext) {
+                       header_hash,
+                       header_ext) {
             Ok(calculated_mac) => {
                 if &calculated_mac != header_mac {
                     return false;
@@ -218,19 +226,14 @@ impl<'a> Request<'a> {
         };
 
         // ..then the hashes
-        match (&self.hash, &header.hash) {
-            (&Some(rh), &Some(ref hh)) => {
-                if rh != &hh[..] {
+        if let Some(local_hash) = self.hash {
+            if let Some(server_hash) = header_hash {
+                if local_hash != server_hash {
                     return false;
                 }
-            }
-            (&Some(_), &None) => {
+            } else {
                 return false;
             }
-            (&None, &Some(_)) => {
-                return false;
-            }
-            (&None, &None) => (),
         }
 
         // ..then the timestamp
@@ -250,18 +253,8 @@ impl<'a> Request<'a> {
 
     /// Get a Response instance for a response to this request.  This is a convenience
     /// wrapper around `Response::from_request_header`.
-    pub fn make_response(&self,
-                         req_header: &'a Header,
-                         hash: Option<&'a [u8]>,
-                         ext: Option<&'a str>)
-                         -> Response<'a> {
-        Response::from_request_header(req_header,
-                                      self.method,
-                                      self.host,
-                                      self.port,
-                                      self.path,
-                                      hash,
-                                      ext)
+    pub fn make_response(&self, req_header: &'a Header) -> Response<'a> {
+        Response::from_request_header(req_header, self.method, self.host, self.port, self.path)
     }
 }
 
@@ -476,5 +469,76 @@ mod test {
             .host("pulse.taskcluster.net")
             .port(443);
         assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+    }
+
+    fn make_header_without_hash() -> Header {
+        Header::new(Some("dh37fgj492je"),
+                    Some(Timespec::new(1353832234, 0)),
+                    Some("j4h3g2"),
+                    Some(Mac::from(vec![161, 105, 122, 110, 248, 62, 129, 193, 148, 206, 239,
+                                        193, 219, 46, 137, 221, 51, 170, 135, 114, 81, 68, 145,
+                                        182, 15, 165, 145, 168, 114, 237, 52, 35])),
+                    None,
+                    None,
+                    None,
+                    None)
+    }
+
+    fn make_header_with_hash() -> Header {
+        Header::new(Some("dh37fgj492je"),
+                    Some(Timespec::new(1353832234, 0)),
+                    Some("j4h3g2"),
+                    Some(Mac::from(vec![189, 53, 155, 244, 203, 150, 255, 238, 135, 144, 186,
+                                        93, 6, 189, 184, 21, 150, 210, 226, 61, 93, 154, 17,
+                                        218, 142, 250, 254, 193, 123, 132, 131, 195])),
+                    None,
+                    Some(vec![1, 2, 3, 4]),
+                    None,
+                    None)
+    }
+
+    #[test]
+    fn test_validate_no_hash() {
+        let header = make_header_without_hash();
+        let req = Request::new();
+        assert!(req.validate_header(&header,
+                                    &Key::new("tok", &digest::SHA256),
+                                    Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_validate_hash_in_header() {
+        let header = make_header_with_hash();
+        let req = Request::new();
+        assert!(req.validate_header(&header,
+                                    &Key::new("tok", &digest::SHA256),
+                                    Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_validate_hash_required_but_not_given() {
+        let header = make_header_without_hash();
+        let hash = vec![1, 2, 3, 4];
+        let req = Request::new().hash(Some(&hash[..]));
+        assert!(!req.validate_header(&header,
+                                     &Key::new("tok", &digest::SHA256),
+                                     Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_validate_hash_validated() {
+        let header = make_header_with_hash();
+        let hash = vec![1, 2, 3, 4];
+        let req = Request::new().hash(Some(&hash[..]));
+        assert!(req.validate_header(&header,
+                                    &Key::new("tok", &digest::SHA256),
+                                    Duration::weeks(52000)));
+
+        // ..but supplying the wrong hash will cause validation to fail
+        let hash = vec![99, 99, 99, 99];
+        let req = Request::new().hash(Some(&hash[..]));
+        assert!(!req.validate_header(&header,
+                                     &Key::new("tok", &digest::SHA256),
+                                     Duration::weeks(52000)));
     }
 }

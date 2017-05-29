@@ -77,7 +77,7 @@ fn client_with_header() {
     {
         let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
         println!("server_hdr: {:?}", server_hdr);
-        let response = request.make_response(&header, None, None);
+        let response = request.make_response(&header);
         if !response.validate_header(&server_hdr, &credentials.key) {
             panic!("authentication of response header failed");
         }

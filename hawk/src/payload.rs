@@ -7,35 +7,39 @@ pub struct PayloadHasher {
     algorithm: &'static digest::Algorithm,
 }
 
-// TODO: this produces vecs, but request expects slices..
-
 impl PayloadHasher {
     /// Create a new PayloadHasher. The `content_type` should be lower-case and should
     /// not include parameters. The digest is assumed to be the same as the digest used
     /// for the credentials in the request.
-    pub fn new(content_type: &str, algorithm: &'static digest::Algorithm) -> Self {
+    pub fn new<'a, B>(content_type: B, algorithm: &'static digest::Algorithm) -> Self
+        where B: Into<&'a [u8]>
+    {
         let mut hasher = PayloadHasher {
             context: digest::Context::new(algorithm),
             algorithm: algorithm,
         };
-        hasher.update("hawk.1.payload\n");
-        hasher.update(content_type);
-        hasher.update("\n");
+        hasher.update(&b"hawk.1.payload\n"[..]);
+        hasher.update(content_type.into());
+        hasher.update(&b"\n"[..]);
         hasher
     }
 
     /// Hash a single value and return it
-    pub fn hash<I>(content_type: &str, algorithm: &'static digest::Algorithm, payload: I) -> Vec<u8>
-        where I: Into<Vec<u8>>
+    pub fn hash<'a, B1, B2>(content_type: B1,
+                            algorithm: &'static digest::Algorithm,
+                            payload: B2)
+                            -> Vec<u8>
+        where B1: Into<&'a [u8]>,
+              B2: Into<&'a [u8]>
     {
-        let mut hasher = PayloadHasher::new(content_type, algorithm);
+        let mut hasher = PayloadHasher::new(content_type.into(), algorithm);
         hasher.update(payload);
         hasher.finish()
     }
 
     /// Update the hash with new data.
-    pub fn update<I>(&mut self, data: I)
-        where I: Into<Vec<u8>>
+    pub fn update<'a, B>(&mut self, data: B)
+        where B: Into<&'a [u8]>
     {
         self.context.update(&data.into());
     }
@@ -56,16 +60,16 @@ mod tests {
 
     #[test]
     fn hash_consistency() {
-        let mut hasher1 = PayloadHasher::new("text/plain", &SHA256);
-        hasher1.update("pay");
-        hasher1.update("load");
+        let mut hasher1 = PayloadHasher::new(&b"text/plain"[..], &SHA256);
+        hasher1.update(&b"pay"[..]);
+        hasher1.update(&b"load"[..]);
         let hash1 = hasher1.finish();
 
-        let mut hasher2 = PayloadHasher::new("text/plain", &SHA256);
-        hasher2.update("payload");
+        let mut hasher2 = PayloadHasher::new(&b"text/plain"[..], &SHA256);
+        hasher2.update(&b"payload"[..]);
         let hash2 = hasher2.finish();
 
-        let hash3 = PayloadHasher::hash("text/plain", &SHA256, "payload");
+        let hash3 = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"payload"[..]);
 
         assert_eq!(hash1,
                    vec![225, 68, 122, 117, 216, 108, 218, 219, 48, 208, 69, 118, 157, 126, 119,

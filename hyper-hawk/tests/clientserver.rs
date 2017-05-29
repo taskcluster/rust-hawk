@@ -4,7 +4,7 @@ extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
 
-use hawk::{Request, Credentials, Key, SHA256};
+use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
 use std::io::{Read, Write};
 use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
@@ -13,30 +13,29 @@ use hyper::server;
 use url::Url;
 use std::thread;
 
-const PORT: u16 = 9981;
-
-fn client() {
+fn client(send_hash: bool, require_hash: bool, port: u16) {
     let credentials = Credentials {
         id: "test-client".to_string(),
         key: Key::new(vec![1u8; 32], &SHA256),
     };
-    let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
-    let request = Request::new().method("GET").url(&url).unwrap();
+    let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
+    let request = Request::new().method("POST").url(&url).unwrap();
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
+    // TODO: how to send a body here?
     let client = Client::new();
     let mut res = client
-        .get(url.as_str())
+        .post(url.as_str())
         .headers(headers)
         .send()
         .unwrap();
 
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
-    assert!(res.status == hyper::Ok);
-    assert!(body == "OK");
+    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(body, "OK");
 
     let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
 
@@ -45,27 +44,29 @@ fn client() {
     assert_eq!(server_hdr.ts, None);
     assert_eq!(server_hdr.nonce, None);
     assert_eq!(server_hdr.ext, Some("server-ext".to_string()));
-    assert_eq!(server_hdr.hash, None);
+    if require_hash {
+        assert!(server_hdr.hash.is_some());
+    }
     assert_eq!(server_hdr.app, None);
     assert_eq!(server_hdr.dlg, None);
 
-    // TODO: this is UGLY - how can we convert Option<x> to Option<&x> automatically?
-    let hash = match server_hdr.hash {
-        Some(ref h) => Some(&h[..]),
-        None => None,
-    };
-    let ext = match server_hdr.ext {
-        Some(ref e) => Some(&e[..]),
-        None => None,
-    };
-    let response = request.make_response(&header, hash, ext);
+    let payload_hash;
+    let mut response = request.make_response(&header);
+    if (require_hash) {
+        payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        response = response.hash(&payload_hash);
+    }
 
     if !response.validate_header(&server_hdr, &credentials.key) {
         panic!("authentication of response header failed");
     }
 }
 
-struct TestHandler {}
+struct TestHandler {
+    require_hash: bool,
+    send_hash: bool,
+    port: u16,
+}
 
 impl server::Handler for TestHandler {
     fn handle(&self, req: server::Request, mut res: server::Response) {
@@ -75,9 +76,9 @@ impl server::Handler for TestHandler {
         // build a request object based on what we know (note: this would include a body
         // hash if one was given)
         let request = Request::new()
-            .method("GET")
+            .method("POST")
             .host("localhost")
-            .port(PORT)
+            .port(self.port)
             .path("/resource");
 
         assert_eq!(hdr.id, Some("test-client".to_string()));
@@ -87,12 +88,17 @@ impl server::Handler for TestHandler {
             panic!("header validation failed");
         }
 
-        let response = request.make_response(&hdr, None, Some("server-ext"));
+        let body = "OK".as_bytes();
+        let payload_hash;
+        let mut response = request.make_response(&hdr).ext("server-ext");
+        if (self.send_hash) {
+            payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body);
+            response = response.hash(&payload_hash);
+        }
         let server_hdr = response.make_header(&key).unwrap();
         res.headers_mut()
             .set(ServerAuthorization(HawkScheme(server_hdr)));
 
-        let body = b"OK";
         res.headers_mut()
             .set(header::ContentLength(body.len() as u64));
 
@@ -101,13 +107,21 @@ impl server::Handler for TestHandler {
     }
 }
 
-#[test]
-/// Set up a client and a server and authenticate a request from one to the other.
-fn clientserver() {
-    let handler = TestHandler {};
-    let server = server::Server::http(("127.0.0.1", PORT)).unwrap();
+// TODO: actually send/require
+fn run_client_server(client_send_hash: bool,
+                     server_require_hash: bool,
+                     server_send_hash: bool,
+                     client_require_hash: bool,
+                     port: u16) {
+    let handler = TestHandler {
+        require_hash: server_require_hash,
+        send_hash: server_send_hash,
+        port: port,
+    };
+    let server = server::Server::http(("127.0.0.1", port)).unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
-    let client_thread = thread::spawn(client);
+    let client_thread =
+        thread::spawn(move || { client(client_send_hash, client_require_hash, port); });
 
     // finish both threads
     let client_res = client_thread.join();
@@ -117,4 +131,34 @@ fn clientserver() {
     if let Err(_) = client_res {
         panic!("client failed");
     }
+}
+
+#[test]
+fn no_hashes() {
+    run_client_server(false, false, false, false, 9001);
+}
+
+#[test]
+fn client_sends() {
+    run_client_server(true, false, false, false, 9002);
+}
+
+#[test]
+fn server_requires() {
+    run_client_server(true, true, false, false, 9003);
+}
+
+#[test]
+fn server_sends() {
+    run_client_server(true, true, true, false, 9004);
+}
+
+#[test]
+fn client_requires() {
+    run_client_server(true, true, true, true, 9005);
+}
+
+#[test]
+fn response_hash_only() {
+    run_client_server(false, false, true, true, 9006);
 }

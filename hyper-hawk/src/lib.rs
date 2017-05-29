@@ -46,15 +46,7 @@
 //!
 //!     let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
 //!
-//!     let hash = match server_hdr.hash {
-//!         Some(ref h) => Some(&h[..]),
-//!         None => None,
-//!     };
-//!     let ext = match server_hdr.ext {
-//!         Some(ref e) => Some(&e[..]),
-//!         None => None,
-//!     };
-//!     let response = request.make_response(&header, hash, ext);
+//!     let response = request.make_response(&header);
 //!
 //!     if !response.validate_header(&server_hdr, &credentials.key) {
 //!         panic!("authentication of response header failed");
@@ -81,7 +73,7 @@
 //!             panic!("header validation failed");
 //!         }
 //!
-//!         let response = request.make_response(&hdr, None, Some("my-ext"));
+//!         let response = request.make_response(&hdr);
 //!         let server_hdr = response.make_header(&key).unwrap();
 //!         res.headers_mut()
 //!             .set(ServerAuthorization(HawkScheme(server_hdr)));

@@ -23,7 +23,7 @@
 //!         key: Key::new(vec![99u8; 32], &SHA256),
 //!     };
 //!
-//!     let payload_hash = PayloadHasher::hash("text/plain", &SHA256, "request-body");
+//!     let payload_hash = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"request-body"[..]);
 //!
 //!     // provide the details of the request to be authorized
 //!     let request = Request::new()
@@ -61,9 +61,9 @@
 //!    let hdr = Header::new(Some("dh37fgj492je"),
 //!                          Some(time::Timespec::new(1353832234, 0)),
 //!                          Some("j4h3g2"),
-//!                          Some(Mac::from(vec![3, 102, 145, 192, 59, 2, 81, 152, 71, 105, 85,
-//!                             211, 41, 150, 137, 209, 136, 84, 123, 115, 50, 221, 18, 76, 101,
-//!                             247, 54, 46, 10, 236, 193, 52])),
+//!                          Some(Mac::from(vec![7, 22, 226, 240, 84, 78, 49, 75, 115, 144, 70,
+//!                                              106, 102, 134, 144, 128, 225, 239, 95, 132, 202,
+//!                                              154, 213, 118, 19, 63, 183, 108, 215, 134, 118, 115])),
 //!                          Some("my-ext-value"),
 //!                          Some(vec![1, 2, 3, 4]),
 //!                          Some("my-app"),
