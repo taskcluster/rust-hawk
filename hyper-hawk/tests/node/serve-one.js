@@ -30,17 +30,21 @@ var server;
 // Create HTTP server
 
 var handler = function (req, res) {
-  Hawk.server.authenticate(req, credentialsFunc, {}, function (err, credentials, artifacts) {
-    var payload = (!err ? 'Hello ' + credentials.user + ' ' + artifacts.ext : 'Shoosh!');
-    var headers = {
-      'Content-Type': 'text/plain',
-      'Server-Authorization': Hawk.server.header(credentials, artifacts, {}), //{ payload, contentType: 'text/plain' })
-    };
+  var request_body = "foo=bar"; // TODO: use body-parser
+  Hawk.server.authenticate(req,
+    credentialsFunc,
+    {payload: request_body},
+    function (err, credentials, artifacts) {
+      var payload = (!err ? 'Hello ' + credentials.user + ' ' + artifacts.ext : 'Shoosh!');
+      var headers = {
+        'Content-Type': 'text/plain',
+        'Server-Authorization': Hawk.server.header(credentials, artifacts, { payload, contentType: 'text/plain' })
+      };
 
-    res.writeHead(!err ? 200 : 401, headers);
-    res.end(payload);
-    server.close();
-  });
+      res.writeHead(!err ? 200 : 401, headers);
+      res.end(payload);
+      server.close();
+    });
 };
 
 var PORT = parseInt(process.argv[2]);

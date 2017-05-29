@@ -55,9 +55,6 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     assert_eq!(server_hdr.ts, None);
     assert_eq!(server_hdr.nonce, None);
     assert_eq!(server_hdr.ext, Some("server-ext".to_string()));
-    if require_hash {
-        assert!(server_hdr.hash.is_some());
-    }
     assert_eq!(server_hdr.app, None);
     assert_eq!(server_hdr.dlg, None);
 

@@ -41,11 +41,15 @@ impl PayloadHasher {
     pub fn update<'a, B>(&mut self, data: B)
         where B: Into<&'a [u8]>
     {
-        self.context.update(&data.into());
+        let data = data.into();
+        self.context.update(&data);
     }
 
     /// Finish hashing and return the result
-    pub fn finish(self) -> Vec<u8> {
+    ///
+    /// Note that this appends a newline to the payload, as does the JS Hawk implementaiton.
+    pub fn finish(mut self) -> Vec<u8> {
+        self.update(&b"\n"[..]);
         let digest = self.context.finish();
         let mut rv = vec![0; self.algorithm.output_len];
         rv.clone_from_slice(digest.as_ref());
@@ -72,9 +76,8 @@ mod tests {
         let hash3 = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"payload"[..]);
 
         assert_eq!(hash1,
-                   vec![225, 68, 122, 117, 216, 108, 218, 219, 48, 208, 69, 118, 157, 126, 119,
-                        209, 205, 109, 173, 75, 255, 47, 180, 155, 55, 26, 251, 145, 81, 212, 81,
-                        54]);
+                   vec![94, 16, 18, 216, 211, 65, 209, 208, 179, 220, 77, 56, 116, 162, 71, 244,
+                        214, 10, 7, 3, 156, 125, 202, 174, 255, 95, 42, 66, 142, 115, 102, 101]);
         assert_eq!(hash2, hash1);
         assert_eq!(hash3, hash1);
     }

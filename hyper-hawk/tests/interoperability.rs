@@ -5,7 +5,7 @@ extern crate hyper_hawk;
 extern crate url;
 
 use std::process::{Command, Child};
-use hawk::{Request, Credentials, Key, SHA256};
+use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
@@ -52,19 +52,25 @@ fn client_with_header() {
         key: Key::new("werxhqb98rpaxn39848xrunpaw3489ruxnpa98w4rxn", &SHA256),
     };
     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
+    let body = "foo=bar";
+
+    let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
     let request = Request::new()
-        .method("GET")
+        .method("POST")
         .url(&url)
         .unwrap()
+        .hash(Some(&payload_hash))
         .ext(Some("ext-content"));
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
+    headers.set(header::ContentType::plaintext());
 
     let client = Client::new();
     let mut res = client
-        .get(url.as_str())
+        .post(url.as_str())
         .headers(headers)
+        .body(body)
         .send()
         .unwrap();
 
@@ -76,8 +82,8 @@ fn client_with_header() {
     // validate server's signature
     {
         let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
-        println!("server_hdr: {:?}", server_hdr);
-        let response = request.make_response(&header);
+        let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        let response = request.make_response(&header).hash(&payload_hash);
         if !response.validate_header(&server_hdr, &credentials.key) {
             panic!("authentication of response header failed");
         }
