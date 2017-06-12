@@ -55,9 +55,7 @@ fn client_with_header() {
     let body = "foo=bar";
 
     let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-    let request = Request::new()
-        .method("POST")
-        .url(&url)
+    let request = Request::from_url("POST", &url)
         .unwrap()
         .hash(Some(&payload_hash))
         .ext(Some("ext-content"));
@@ -67,8 +65,7 @@ fn client_with_header() {
     headers.set(header::ContentType::plaintext());
 
     let client = Client::new();
-    let mut res = client
-        .post(url.as_str())
+    let mut res = client.post(url.as_str())
         .headers(headers)
         .body(body)
         .send()

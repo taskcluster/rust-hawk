@@ -25,7 +25,7 @@
 //!         key: Key::new(vec![1u8; 32], &SHA256),
 //!     };
 //!     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
-//!     let request = Request::new().method("GET").url(&url).unwrap();
+//!     let request = Request::from_url("GET", &url).unwrap();
 //!     let mut headers = hyper::header::Headers::new();
 //!     let header = request.make_header(&credentials).unwrap();
 //!     // note that HawkScheme must own its header, with no embedded references, because
@@ -62,11 +62,7 @@
 //!
 //!         // build a request object based on what we know (note: this would include a body
 //!         // hash if one was given)
-//!         let request = Request::new()
-//!             .method("GET")
-//!             .host("localhost")
-//!             .port(PORT)
-//!             .path("/resource");
+//!         let request = Request::new("GET", "localhost", PORT, "/resource");
 //!
 //!         let key = Key::new(vec![1u8; 32], &SHA256);
 //!         if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {

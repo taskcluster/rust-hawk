@@ -11,8 +11,6 @@ use rand::Rng;
 use error::HawkError;
 use time::{now, Duration};
 
-static EMPTY_STRING: &'static str = "";
-
 /// Request represents a single HTTP request.
 ///
 /// The structure is created using the builder idiom.  Most uses of this library will hold
@@ -25,7 +23,7 @@ static EMPTY_STRING: &'static str = "";
 ///
 /// ```
 /// use hawk::Request;
-/// let baseRequest = Request::new().method("GET").host("mysite.com").port(443);
+/// let baseRequest = Request::new("GET", "mysite.com", 443, "/");
 /// let request1 = baseRequest.clone().method("POST").path("/api/user");
 /// let request2 = baseRequest.clone().path("/api/users");
 /// ```
@@ -44,19 +42,33 @@ pub struct Request<'a> {
 }
 
 impl<'a> Request<'a> {
-    /// Create a new, empty request. The method, path, host, and port properties must be set before
-    /// use.
-    pub fn new() -> Self {
+    /// Create a new request with the given method, host, port, and path.
+    pub fn new(method: &'a str, host: &'a str, port: u16, path: &'a str) -> Self {
         Request {
-            method: EMPTY_STRING,
-            host: EMPTY_STRING,
-            port: 0,
-            path: EMPTY_STRING,
+            method: method,
+            host: host,
+            port: port,
+            path: path,
             hash: None,
             ext: None,
             app: None,
             dlg: None,
         }
+    }
+
+    /// Create a new request with the host, port, and path determined from the URL.
+    pub fn from_url(method: &'a str, url: &'a Url) -> Result<Self, HawkError> {
+        let (host, port, path) = Request::parse_url(url)?;
+        Ok(Request {
+            method: method,
+            host: host,
+            port: port,
+            path: path,
+            hash: None,
+            ext: None,
+            app: None,
+            dlg: None,
+        })
     }
 
     /// Set the request method. This should be a capitalized string.
@@ -85,11 +97,7 @@ impl<'a> Request<'a> {
 
     /// Set the hostname, port, and path for the request, from a string URL.
     pub fn url(self, url: &'a Url) -> Result<Self, HawkError> {
-        let path = url.path();
-        let host = url.host_str()
-            .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
-        let port = url.port_or_known_default()
-            .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
+        let (host, port, path) = Request::parse_url(url)?;
         Ok(self.path(path).host(host).port(port))
     }
 
@@ -256,6 +264,15 @@ impl<'a> Request<'a> {
     pub fn make_response(&self, req_header: &'a Header) -> Response<'a> {
         Response::from_request_header(req_header, self.method, self.host, self.port, self.path)
     }
+
+    fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str), HawkError> {
+        let host = url.host_str()
+            .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
+        let port = url.port_or_known_default()
+            .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
+        let path = url.path();
+        Ok((host, port, path))
+    }
 }
 
 /// Create a random string with `bytes` bytes of entropy.  The string
@@ -289,11 +306,11 @@ mod test {
 
     #[test]
     fn test_empty() {
-        let req = Request::new();
-        assert_eq!(req.method, "");
-        assert_eq!(req.path, "");
-        assert_eq!(req.host, "");
-        assert_eq!(req.port, 0);
+        let req = Request::new("GET", "site", 80, "/");
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.host, "site");
+        assert_eq!(req.port, 80);
+        assert_eq!(req.path, "/");
         assert_eq!(req.hash, None);
         assert_eq!(req.ext, None);
         assert_eq!(req.app, None);
@@ -303,11 +320,7 @@ mod test {
     #[test]
     fn test_builder() {
         let hash = vec![0u8];
-        let req = Request::new()
-            .method("GET")
-            .path("/foo")
-            .host("example.com")
-            .port(443)
+        let req = Request::new("GET", "example.com", 443, "/foo")
             .hash(Some(&hash[..]))
             .ext(Some("ext"))
             .app(Some("app"))
@@ -325,7 +338,7 @@ mod test {
 
     #[test]
     fn test_builder_clone() {
-        let req = Request::new().method("GET").path("/foo");
+        let req = Request::new("GET", "site", 443, "/foo");
         let req2 = req.clone().path("/bar");
 
         assert_eq!(req.method, "GET");
@@ -337,7 +350,7 @@ mod test {
     #[test]
     fn test_url_builder() {
         let url = Url::parse("https://example.com/foo").unwrap();
-        let req = Request::new().url(&url).unwrap();
+        let req = Request::from_url("GET", &url).unwrap();
 
         assert_eq!(req.path, "/foo");
         assert_eq!(req.host, "example.com");
@@ -346,11 +359,7 @@ mod test {
 
     #[test]
     fn test_make_header_full() {
-        let req = Request::new()
-            .method("GET")
-            .path("/foo")
-            .host("example.com")
-            .port(443);
+        let req = Request::new("GET", "example.com", 443, "/foo");
         let credentials = Credentials {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
@@ -376,11 +385,7 @@ mod test {
     #[test]
     fn test_make_header_full_with_optional_fields() {
         let hash = vec![0u8];
-        let req = Request::new()
-            .method("GET")
-            .path("/foo")
-            .host("example.com")
-            .port(443)
+        let req = Request::new("GET", "example.com", 443, "/foo")
             .hash(Some(&hash[..]))
             .ext(Some("ext"))
             .app(Some("app"))
@@ -410,11 +415,7 @@ mod test {
 
     #[test]
     fn test_validate_matches_generated() {
-        let req = Request::new()
-            .method("GET")
-            .path("/foo")
-            .host("example.com")
-            .port(443);
+        let req = Request::new("GET", "example.com", 443, "/foo");
         let credentials = Credentials {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
@@ -431,11 +432,7 @@ mod test {
             id: "me".to_string(),
             key: Key::new("tok", &digest::SHA256),
         };
-        let req = Request::new()
-            .method("GET")
-            .path("/v1/namespaces")
-            .host("pulse.taskcluster.net")
-            .port(443);
+        let req = Request::new("GET", "pulse.taskcluster.net", 443, "/v1/namespaces");
         // allow 1000 years skew, since this was a real request that
         // happened back in 2017, when life was simple and carefree
         assert!(req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
@@ -448,11 +445,7 @@ mod test {
             id: "me".to_string(),
             key: Key::new("WRONG", &digest::SHA256),
         };
-        let req = Request::new()
-            .method("GET")
-            .path("/v1/namespaces")
-            .host("pulse.taskcluster.net")
-            .port(443);
+        let req = Request::new("GET", "pulse.taskcluster.net", 443, "/v1/namespaces");
         assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
     }
 
@@ -463,11 +456,7 @@ mod test {
             id: "me".to_string(),
             key: Key::new("tok", &digest::SHA256),
         };
-        let req = Request::new()
-            .method("GET")
-            .path("RONG PATH")
-            .host("pulse.taskcluster.net")
-            .port(443);
+        let req = Request::new("GET", "pulse.taskcluster.net", 443, "WRONG PATH");
         assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
     }
 
@@ -502,7 +491,7 @@ mod test {
     #[test]
     fn test_validate_no_hash() {
         let header = make_header_without_hash();
-        let req = Request::new();
+        let req = Request::new("", "", 0, "");
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
                                     Duration::weeks(52000)));
@@ -511,7 +500,7 @@ mod test {
     #[test]
     fn test_validate_hash_in_header() {
         let header = make_header_with_hash();
-        let req = Request::new();
+        let req = Request::new("", "", 0, "");
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
                                     Duration::weeks(52000)));
@@ -521,7 +510,7 @@ mod test {
     fn test_validate_hash_required_but_not_given() {
         let header = make_header_without_hash();
         let hash = vec![1, 2, 3, 4];
-        let req = Request::new().hash(Some(&hash[..]));
+        let req = Request::new("", "", 0, "").hash(Some(&hash[..]));
         assert!(!req.validate_header(&header,
                                      &Key::new("tok", &digest::SHA256),
                                      Duration::weeks(52000)));
@@ -531,14 +520,14 @@ mod test {
     fn test_validate_hash_validated() {
         let header = make_header_with_hash();
         let hash = vec![1, 2, 3, 4];
-        let req = Request::new().hash(Some(&hash[..]));
+        let req = Request::new("", "", 0, "").hash(Some(&hash[..]));
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
                                     Duration::weeks(52000)));
 
         // ..but supplying the wrong hash will cause validation to fail
         let hash = vec![99, 99, 99, 99];
-        let req = Request::new().hash(Some(&hash[..]));
+        let req = Request::new("", "", 0, "").hash(Some(&hash[..]));
         assert!(!req.validate_header(&header,
                                      &Key::new("tok", &digest::SHA256),
                                      Duration::weeks(52000)));

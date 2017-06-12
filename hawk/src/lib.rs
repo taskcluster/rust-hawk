@@ -26,11 +26,7 @@
 //!     let payload_hash = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"request-body"[..]);
 //!
 //!     // provide the details of the request to be authorized
-//!     let request = Request::new()
-//!         .method("POST")
-//!         .host("example.com")
-//!         .port(80)
-//!         .path("/v1/users")
+//!      let request = Request::new("POST", "example.com", 80, "/v1/users")
 //!         .hash(Some(&payload_hash));
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
@@ -71,11 +67,7 @@
 //!
 //!    // build a request object based on what we know
 //!    let hash = vec![1, 2, 3, 4];
-//!    let request = Request::new()
-//!        .method("GET")
-//!        .host("localhost")
-//!        .port(443)
-//!        .path("/resource")
+//!    let request = Request::new("GET", "localhost", 443, "/resource")
 //!        .hash(Some(&hash));
 //!
 //!    let key = Key::new(vec![99u8; 32], &SHA256);

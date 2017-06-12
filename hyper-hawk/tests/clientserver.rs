@@ -22,7 +22,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     let body = "foo=bar";
 
     let payload_hash;
-    let mut request = Request::new().method("POST").url(&url).unwrap();
+    let mut request = Request::from_url("POST", &url).unwrap();
     // for purposes of the test, we pretend we're using port 9999
     request = request.port(9999);
 
@@ -36,8 +36,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();
-    let mut res = client
-        .post(url.as_str())
+    let mut res = client.post(url.as_str())
         .headers(headers)
         .body(body)
         .send()
@@ -86,11 +85,7 @@ impl server::Handler for TestHandler {
 
         // build a request object based on what we know
         let payload_hash;
-        let mut request = Request::new()
-            .method("POST")
-            .host("localhost")
-            .port(9999)
-            .path("/resource");
+        let mut request = Request::new("POST", "localhost", 9999, "/resource");
 
         // add a body hash, if we require such a thing
         if self.require_hash {
@@ -135,10 +130,9 @@ fn run_client_server(client_send_hash: bool,
     let mut server = server::Server::http(("127.0.0.1", 0)).unwrap();
     let local_address = server.local_addr().unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
-    let client_thread =
-        thread::spawn(move || {
-                          client(client_send_hash, client_require_hash, local_address.port());
-                      });
+    let client_thread = thread::spawn(move || {
+        client(client_send_hash, client_require_hash, local_address.port());
+    });
 
     // finish both threads
     let client_res = client_thread.join();
