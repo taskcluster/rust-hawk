@@ -41,29 +41,14 @@ impl Header {
         where S: Into<String>
     {
         Header {
-            id: match id {
-                Some(id) => Some(Header::check_component(id)),
-                None => None,
-            },
+            id: id.map(Header::check_component),
             ts: ts,
-            nonce: match nonce {
-                Some(nonce) => Some(Header::check_component(nonce)),
-                None => None,
-            },
+            nonce: nonce.map(Header::check_component),
             mac: mac,
-            ext: match ext {
-                Some(ext) => Some(Header::check_component(ext)),
-                None => None,
-            },
+            ext: ext.map(Header::check_component),
             hash: hash,
-            app: match app {
-                Some(app) => Some(Header::check_component(app)),
-                None => None,
-            },
-            dlg: match dlg {
-                Some(dlg) => Some(Header::check_component(dlg)),
-                None => None,
-            },
+            app: app.map(Header::check_component),
+            dlg: dlg.map(Header::check_component),
         }
     }
 
@@ -147,7 +132,9 @@ impl FromStr for Header {
 
         while p.len() > 0 {
             // Skip whitespace and commas used as separators
-            p = p.trim_left_matches(|c| { return c == ',' || char::is_whitespace(c); });
+            p = p.trim_left_matches(|c| {
+                return c == ',' || char::is_whitespace(c);
+            });
             // Find first '=' which delimits attribute name from value
             match p.find("=") {
                 Some(v) => {
@@ -207,33 +194,33 @@ impl FromStr for Header {
         }
 
         Ok(Header {
-               id: match id {
-                   Some(id) => Some(id.to_string()),
-                   None => None,
-               },
-               ts: ts,
-               nonce: match nonce {
-                   Some(nonce) => Some(nonce.to_string()),
-                   None => None,
-               },
-               mac: match mac {
-                   Some(mac) => Some(Mac::from(mac)),
-                   None => None,
-               },
-               ext: match ext {
-                   Some(ext) => Some(ext.to_string()),
-                   None => None,
-               },
-               hash: hash,
-               app: match app {
-                   Some(app) => Some(app.to_string()),
-                   None => None,
-               },
-               dlg: match dlg {
-                   Some(dlg) => Some(dlg.to_string()),
-                   None => None,
-               },
-           })
+            id: match id {
+                Some(id) => Some(id.to_string()),
+                None => None,
+            },
+            ts: ts,
+            nonce: match nonce {
+                Some(nonce) => Some(nonce.to_string()),
+                None => None,
+            },
+            mac: match mac {
+                Some(mac) => Some(Mac::from(mac)),
+                None => None,
+            },
+            ext: match ext {
+                Some(ext) => Some(ext.to_string()),
+                None => None,
+            },
+            hash: hash,
+            app: match app {
+                Some(app) => Some(app.to_string()),
+                None => None,
+            },
+            dlg: match dlg {
+                Some(dlg) => Some(dlg.to_string()),
+                None => None,
+            },
+        })
     }
 }
 
@@ -316,7 +303,7 @@ mod test {
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       app=\"my-app\", dlg=\"my-authority\"")
-                .unwrap();
+            .unwrap();
         assert!(s.id == Some("dh37fgj492je".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));
@@ -346,7 +333,7 @@ mod test {
         let s = Header::from_str("id=\"xyz\", ts=\"1353832234\", \
                                       nonce=\"abc\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
-                .unwrap();
+            .unwrap();
         assert!(s.id == Some("xyz".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("abc".to_string()));
@@ -364,7 +351,7 @@ mod test {
         let s = Header::from_str(", id  =  \"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
-                .unwrap();
+            .unwrap();
         assert!(s.id == Some("dh37fgj492je".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));

@@ -41,7 +41,9 @@ impl error::Error for HawkError {
             HawkError::MissingAttributes => "Hawk header is missing required attributes",
             HawkError::UnknownAttribute => "Hawk header has an unknown attribute",
             HawkError::InvalidTimestamp => "Hawk header's `ts` value is invalid",
-            HawkError::Base64DecodeError => "One of the Hawk header's base64-encoded values is invalid",
+            HawkError::Base64DecodeError => {
+                "One of the Hawk header's base64-encoded values is invalid"
+            }
             HawkError::UrlError(_) => "Error parsing a URL",
             HawkError::CryptoError => "Cryptographic error",
             HawkError::IoError(_) => "encountered an I/O error",
