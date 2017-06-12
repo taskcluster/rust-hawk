@@ -26,3 +26,6 @@ This is a work-in-progress.
 
 * Server
   * Send clock information on auth failure
+
+* Hyper
+  * Use refs in Header once 0.11 is out
