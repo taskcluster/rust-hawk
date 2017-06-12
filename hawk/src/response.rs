@@ -70,7 +70,7 @@ impl<'a> Response<'a> {
         if let Some(ts) = self.req_header.ts {
             if let Some(ref nonce) = self.req_header.nonce {
                 mac = Mac::new(true,
-                               &key,
+                               key,
                                ts,
                                nonce,
                                self.method,
