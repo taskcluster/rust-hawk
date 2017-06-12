@@ -32,3 +32,6 @@ This is a work-in-progress.
 
 * Rust
   * Fix passing around of hashes
+  * take and return &mut Self in builder pattern
+  * allow passing more types in request building
+  * use Into<Option<T>> to avoid passing Some(..)
