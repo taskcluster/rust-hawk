@@ -25,9 +25,11 @@ pub struct Header {
 }
 
 impl Header {
-    /// Create a new Header with the full set of Hawk fields.  This is a low-level funtion.
+    /// Create a new Header with the full set of Hawk fields.
     ///
-    /// None of the string-formatted header components can contain the character `\"`.
+    /// This is a low-level funtion. Headers are more often created from Request or Responses.
+    ///
+    /// Note that none of the string-formatted header components can contain the character `\"`.
     pub fn new<S>(id: Option<S>,
                   ts: Option<Timespec>,
                   nonce: Option<S>,
