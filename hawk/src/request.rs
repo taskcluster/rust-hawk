@@ -141,26 +141,26 @@ impl<'a> Request<'a> {
                            self.path,
                            self.hash,
                            self.ext)?;
-        Ok(Header::new(Some(credentials.id.clone()),
-                       Some(ts),
-                       Some(nonce),
-                       Some(mac),
-                       match self.ext {
-                           None => None,
-                           Some(v) => Some(v.to_string()),
-                       },
-                       match self.hash {
-                           None => None,
-                           Some(v) => Some(v.to_vec()),
-                       },
-                       match self.app {
-                           None => None,
-                           Some(v) => Some(v.to_string()),
-                       },
-                       match self.dlg {
-                           None => None,
-                           Some(v) => Some(v.to_string()),
-                       }))
+        Header::new(Some(credentials.id.clone()),
+                    Some(ts),
+                    Some(nonce),
+                    Some(mac),
+                    match self.ext {
+                        None => None,
+                        Some(v) => Some(v.to_string()),
+                    },
+                    match self.hash {
+                        None => None,
+                        Some(v) => Some(v.to_vec()),
+                    },
+                    match self.app {
+                        None => None,
+                        Some(v) => Some(v.to_string()),
+                    },
+                    match self.dlg {
+                        None => None,
+                        Some(v) => Some(v.to_string()),
+                    })
     }
 
     /// Validate the given header.  This validates that the `mac` field matches that calculated
@@ -265,11 +265,11 @@ fn random_string(bytes: usize) -> String {
     let mut bytes = vec![0u8; bytes];
     rng.fill_bytes(&mut bytes);
     bytes.to_base64(base64::Config {
-                        char_set: base64::CharacterSet::Standard,
-                        newline: base64::Newline::LF,
-                        pad: true,
-                        line_length: None,
-                    })
+        char_set: base64::CharacterSet::Standard,
+        newline: base64::Newline::LF,
+        pad: true,
+        line_length: None,
+    })
 }
 
 #[cfg(test)]
@@ -482,6 +482,7 @@ mod test {
                     None,
                     None,
                     None)
+            .unwrap()
     }
 
     fn make_header_with_hash() -> Header {
@@ -495,6 +496,7 @@ mod test {
                     Some(vec![1, 2, 3, 4]),
                     None,
                     None)
+            .unwrap()
     }
 
     #[test]

@@ -27,8 +27,7 @@ pub struct Header {
 impl Header {
     /// Create a new Header with the full set of Hawk fields.  This is a low-level funtion.
     ///
-    /// None of the header components can contain the character `\"`.  This function will panic
-    /// if any such characters appear.
+    /// None of the string-formatted header components can contain the character `\"`.
     pub fn new<S>(id: Option<S>,
                   ts: Option<Timespec>,
                   nonce: Option<S>,
@@ -37,30 +36,34 @@ impl Header {
                   hash: Option<Vec<u8>>,
                   app: Option<S>,
                   dlg: Option<S>)
-                  -> Header
+                  -> Result<Header, HawkError>
         where S: Into<String>
     {
-        Header {
-            id: id.map(Header::check_component),
+        Ok(Header {
+            id: Header::check_component(id)?,
             ts: ts,
-            nonce: nonce.map(Header::check_component),
+            nonce: Header::check_component(nonce)?,
             mac: mac,
-            ext: ext.map(Header::check_component),
+            ext: Header::check_component(ext)?,
             hash: hash,
-            app: app.map(Header::check_component),
-            dlg: dlg.map(Header::check_component),
-        }
+            app: Header::check_component(app)?,
+            dlg: Header::check_component(dlg)?,
+        })
     }
 
     /// Check a header component for validity.
-    fn check_component<S>(value: S) -> String
+    fn check_component<S>(value: Option<S>) -> Result<Option<String>, HawkError>
         where S: Into<String>
     {
-        let value = value.into();
-        if value.contains("\"") {
-            panic!("Hawk header components cannot contain `\"`");
+        if let Some(value) = value {
+            let value = value.into();
+            if value.contains("\"") {
+                return Err(HawkError::InvalidHeaderValue);
+            }
+            Ok(Some(value))
+        } else {
+            Ok(None)
         }
-        value
     }
 
     /// Format the header for transmission in an Authorization header, omitting the `"Hawk "`
@@ -232,68 +235,68 @@ mod test {
     use mac::Mac;
 
     #[test]
-    #[should_panic]
     fn illegal_id() {
-        Header::new(Some("ab\"cdef"),
-                    Some(Timespec::new(1234, 0)),
-                    Some("nonce"),
-                    Some(Mac::from(vec![])),
-                    Some("ext"),
-                    None,
-                    None,
-                    None);
+        assert!(Header::new(Some("ab\"cdef"),
+                            Some(Timespec::new(1234, 0)),
+                            Some("nonce"),
+                            Some(Mac::from(vec![])),
+                            Some("ext"),
+                            None,
+                            None,
+                            None)
+            .is_err());
     }
 
     #[test]
-    #[should_panic]
     fn illegal_nonce() {
-        Header::new(Some("abcdef"),
-                    Some(Timespec::new(1234, 0)),
-                    Some("no\"nce"),
-                    Some(Mac::from(vec![])),
-                    Some("ext"),
-                    None,
-                    None,
-                    None);
+        assert!(Header::new(Some("abcdef"),
+                            Some(Timespec::new(1234, 0)),
+                            Some("no\"nce"),
+                            Some(Mac::from(vec![])),
+                            Some("ext"),
+                            None,
+                            None,
+                            None)
+            .is_err());
     }
 
     #[test]
-    #[should_panic]
     fn illegal_ext() {
-        Header::new(Some("abcdef"),
-                    Some(Timespec::new(1234, 0)),
-                    Some("nonce"),
-                    Some(Mac::from(vec![])),
-                    Some("ex\"t"),
-                    None,
-                    None,
-                    None);
+        assert!(Header::new(Some("abcdef"),
+                            Some(Timespec::new(1234, 0)),
+                            Some("nonce"),
+                            Some(Mac::from(vec![])),
+                            Some("ex\"t"),
+                            None,
+                            None,
+                            None)
+            .is_err());
     }
 
     #[test]
-    #[should_panic]
     fn illegal_app() {
-        Header::new(Some("abcdef"),
-                    Some(Timespec::new(1234, 0)),
-                    Some("nonce"),
-                    Some(Mac::from(vec![])),
-                    None,
-                    None,
-                    Some("a\"pp"),
-                    None);
+        assert!(Header::new(Some("abcdef"),
+                            Some(Timespec::new(1234, 0)),
+                            Some("nonce"),
+                            Some(Mac::from(vec![])),
+                            None,
+                            None,
+                            Some("a\"pp"),
+                            None)
+            .is_err());
     }
 
     #[test]
-    #[should_panic]
     fn illegal_dlg() {
-        Header::new(Some("abcdef"),
-                    Some(Timespec::new(1234, 0)),
-                    Some("nonce"),
-                    Some(Mac::from(vec![])),
-                    None,
-                    None,
-                    None,
-                    Some("d\"lg"));
+        assert!(Header::new(Some("abcdef"),
+                            Some(Timespec::new(1234, 0)),
+                            Some("nonce"),
+                            Some(Mac::from(vec![])),
+                            None,
+                            None,
+                            None,
+                            Some("d\"lg"))
+            .is_err());
     }
 
     #[test]
@@ -367,7 +370,7 @@ mod test {
     #[test]
     fn to_str_no_fields() {
         // must supply a type for S, since it is otherwise unused
-        let s = Header::new::<String>(None, None, None, None, None, None, None, None);
+        let s = Header::new::<String>(None, None, None, None, None, None, None, None).unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted == "")
@@ -384,7 +387,8 @@ mod test {
                             None,
                             None,
                             None,
-                            None);
+                            None)
+            .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -403,7 +407,8 @@ mod test {
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
-                            Some("my-dlg"));
+                            Some("my-dlg"))
+            .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -423,7 +428,8 @@ mod test {
                             Some("my-ext-value"),
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
-                            Some("my-dlg"));
+                            Some("my-dlg"))
+            .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();

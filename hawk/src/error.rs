@@ -12,6 +12,7 @@ pub enum HawkError {
     InvalidTimestamp,
     Base64DecodeError,
     UrlError(String),
+    InvalidHeaderValue,
     CryptoError,
     IoError(io::Error),
 }
@@ -45,6 +46,7 @@ impl error::Error for HawkError {
                 "One of the Hawk header's base64-encoded values is invalid"
             }
             HawkError::UrlError(_) => "Error parsing a URL",
+            HawkError::InvalidHeaderValue => "Header components cannot contain `\\`",
             HawkError::CryptoError => "Cryptographic error",
             HawkError::IoError(_) => "encountered an I/O error",
         }

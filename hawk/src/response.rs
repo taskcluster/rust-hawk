@@ -87,20 +87,20 @@ impl<'a> Response<'a> {
         }
 
         // Per JS implementation, the Server-Authorization header includes only mac, hash, and ext
-        Ok(Header::new(None,
-                       None,
-                       None,
-                       Some(mac),
-                       match self.ext {
-                           None => None,
-                           Some(v) => Some(v.to_string()),
-                       },
-                       match self.hash {
-                           None => None,
-                           Some(v) => Some(v.to_vec()),
-                       },
-                       None,
-                       None))
+        Header::new(None,
+                    None,
+                    None,
+                    Some(mac),
+                    match self.ext {
+                        None => None,
+                        Some(v) => Some(v.to_string()),
+                    },
+                    match self.hash {
+                        None => None,
+                        Some(v) => Some(v.to_vec()),
+                    },
+                    None,
+                    None)
     }
 
     /// Validate a Server-Authorization header.
@@ -193,6 +193,7 @@ mod test {
                     None,
                     None,
                     None)
+            .unwrap()
     }
 
     #[test]
@@ -209,7 +210,8 @@ mod test {
                                         Some("server-ext"),
                                         None,
                                         None,
-                                        None);
+                                        None)
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -229,7 +231,8 @@ mod test {
                                         Some("server-ext"),
                                         Some(vec![1, 2, 3, 4]),
                                         None,
-                                        None);
+                                        None)
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -250,7 +253,8 @@ mod test {
                                         Some("server-ext"),
                                         None,
                                         None,
-                                        None);
+                                        None)
+            .unwrap();
         assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -272,7 +276,8 @@ mod test {
                                         Some("server-ext"),
                                         Some(vec![1, 2, 3, 4]),
                                         None,
-                                        None);
+                                        None)
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
 
         // a different supplied hash won't match..

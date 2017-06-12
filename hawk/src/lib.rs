@@ -67,7 +67,7 @@
 //!                          Some("my-ext-value"),
 //!                          Some(vec![1, 2, 3, 4]),
 //!                          Some("my-app"),
-//!                          Some("my-dlg"));
+//!                          Some("my-dlg")).unwrap();
 //!
 //!    // build a request object based on what we know
 //!    let hash = vec![1, 2, 3, 4];
