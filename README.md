@@ -29,3 +29,7 @@ This is a work-in-progress.
 
 * Hyper
   * Use refs in Header once 0.11 is out
+
+* Rust
+  * Don't use sentinel values in Request - require those values in new
+  * Fix passing around of hashes
