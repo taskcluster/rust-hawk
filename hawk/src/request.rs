@@ -13,9 +13,10 @@ use time::{now, Duration};
 
 /// Request represents a single HTTP request.
 ///
-/// The structure is created using the builder idiom.  Most uses of this library will hold
-/// several of the fields in this structure fixed.  Cloning the structure with these fields
-/// applied is a convenient way to avoid repeating those fields.
+/// The structure is created using the builder idiom. Most uses of this library will hold
+/// several of the fields in this structure fixed. Cloning the structure with these fields
+/// applied is a convenient way to avoid repeating those fields. Most fields are references,
+/// since in common use the values already exist and will outlive the request.
 ///
 /// A request can be used on the client, to generate a header, or on the server, to validate one.
 ///
@@ -51,11 +52,14 @@ impl<'a> Request<'a> {
 
     /// Similar to `make_header`, but allowing specification of the timestamp
     /// and nonce.
-    pub fn make_header_full(&self,
-                            credentials: &Credentials,
-                            ts: time::Timespec,
-                            nonce: String)
-                            -> Result<Header, HawkError> {
+    pub fn make_header_full<S>(&self,
+                               credentials: &Credentials,
+                               ts: time::Timespec,
+                               nonce: S)
+                               -> Result<Header, HawkError>
+        where S: Into<String>
+    {
+        let nonce = nonce.into();
         let mac = Mac::new(MacType::Header,
                            &credentials.key,
                            ts,
@@ -380,9 +384,8 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header =
-            req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
-                .unwrap();
+        let header = req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny")
+            .unwrap();
         assert_eq!(header,
                    Header {
                        id: Some("me".to_string()),
@@ -411,9 +414,8 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header =
-            req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny".to_string())
-                .unwrap();
+        let header = req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny")
+            .unwrap();
         assert_eq!(header,
                    Header {
                        id: Some("me".to_string()),
@@ -437,7 +439,7 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header = req.make_header_full(&credentials, now().to_timespec(), "nonny".to_string())
+        let header = req.make_header_full(&credentials, now().to_timespec(), "nonny")
             .unwrap();
         assert!(req.validate_header(&header, &credentials.key, Duration::minutes(1)));
     }

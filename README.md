@@ -34,6 +34,5 @@ This is a work-in-progress.
   * Server example in hawk/src/lib.rs
 
 * Rust
-  * allow passing more types in request building
   * use Into<Option<T>> to avoid passing Some(..)
   * use error-chain
