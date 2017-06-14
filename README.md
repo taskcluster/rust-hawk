@@ -35,4 +35,5 @@ This is a work-in-progress.
 
 * Rust
   * use Into<Option<T>> to avoid passing Some(..)
+  * use Option<AsRef<[u8]>> for ext, hash, etc. in Mac
   * use error-chain
