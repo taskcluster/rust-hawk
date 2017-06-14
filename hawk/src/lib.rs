@@ -14,7 +14,7 @@
 //! extern crate time;
 //! extern crate hawk;
 //!
-//! use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
+//! use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
 //!
 //! fn main() {
 //!     // provide the Hawk id and key
@@ -26,8 +26,9 @@
 //!     let payload_hash = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"request-body"[..]);
 //!
 //!     // provide the details of the request to be authorized
-//!      let request = Request::new("POST", "example.com", 80, "/v1/users")
-//!         .hash(Some(&payload_hash));
+//!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
+//!         .hash(Some(&payload_hash))
+//!         .request();
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
 //!     // so the MAC will be different on every request.
@@ -49,7 +50,7 @@
 //! extern crate time;
 //! extern crate hawk;
 //!
-//! use hawk::{Request, Header, Key, SHA256};
+//! use hawk::{RequestBuilder, Header, Key, SHA256};
 //! use hawk::mac::Mac;
 //!
 //! fn main() {
@@ -67,8 +68,9 @@
 //!
 //!    // build a request object based on what we know
 //!    let hash = vec![1, 2, 3, 4];
-//!    let request = Request::new("GET", "localhost", 443, "/resource")
-//!        .hash(Some(&hash));
+//!    let request = RequestBuilder::new("GET", "localhost", 443, "/resource")
+//!        .hash(Some(&hash))
+//!        .request();
 //!
 //!    let key = Key::new(vec![99u8; 32], &SHA256);
 //!    if !request.validate_header(&hdr, &key, time::Duration::weeks(5200)) {
@@ -92,10 +94,10 @@ mod credentials;
 pub use credentials::{Credentials, Key};
 
 mod request;
-pub use request::Request;
+pub use request::{Request, RequestBuilder};
 
 mod response;
-pub use response::Response;
+pub use response::{Response, ResponseBuilder};
 
 mod error;
 pub use error::HawkError;

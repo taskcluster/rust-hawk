@@ -8,7 +8,7 @@
 //! # extern crate hyper;
 //! # extern crate hyper_hawk;
 //! # extern crate url;
-//! use hawk::{Request, Credentials, Key, SHA256};
+//! use hawk::{RequestBuilder, Credentials, Key, SHA256};
 //! use std::io::{Read, Write};
 //! use hyper_hawk::{HawkScheme, ServerAuthorization};
 //! use hyper::Client;
@@ -25,7 +25,7 @@
 //!         key: Key::new(vec![1u8; 32], &SHA256),
 //!     };
 //!     let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
-//!     let request = Request::from_url("GET", &url).unwrap();
+//!     let request = RequestBuilder::from_url("GET", &url).unwrap().request();
 //!     let mut headers = hyper::header::Headers::new();
 //!     let header = request.make_header(&credentials).unwrap();
 //!     // note that HawkScheme must own its header, with no embedded references, because
@@ -46,7 +46,7 @@
 //!
 //!     let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
 //!
-//!     let response = request.make_response(&header);
+//!     let response = request.make_response_builder(&header).response();
 //!
 //!     if !response.validate_header(&server_hdr, &credentials.key) {
 //!         panic!("authentication of response header failed");
@@ -62,14 +62,14 @@
 //!
 //!         // build a request object based on what we know (note: this would include a body
 //!         // hash if one was given)
-//!         let request = Request::new("GET", "localhost", PORT, "/resource");
+//!         let request = RequestBuilder::new("GET", "localhost", PORT, "/resource").request();
 //!
 //!         let key = Key::new(vec![1u8; 32], &SHA256);
 //!         if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {
 //!             panic!("header validation failed");
 //!         }
 //!
-//!         let response = request.make_response(&hdr);
+//!         let response = request.make_response_builder(&hdr).response();
 //!         let server_hdr = response.make_header(&key).unwrap();
 //!         res.headers_mut()
 //!             .set(ServerAuthorization(HawkScheme(server_hdr)));

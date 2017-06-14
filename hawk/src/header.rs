@@ -42,15 +42,15 @@ impl Header {
         where S: Into<String>
     {
         Ok(Header {
-            id: Header::check_component(id)?,
-            ts: ts,
-            nonce: Header::check_component(nonce)?,
-            mac: mac,
-            ext: Header::check_component(ext)?,
-            hash: hash,
-            app: Header::check_component(app)?,
-            dlg: Header::check_component(dlg)?,
-        })
+               id: Header::check_component(id)?,
+               ts: ts,
+               nonce: Header::check_component(nonce)?,
+               mac: mac,
+               ext: Header::check_component(ext)?,
+               hash: hash,
+               app: Header::check_component(app)?,
+               dlg: Header::check_component(dlg)?,
+           })
     }
 
     /// Check a header component for validity.
@@ -137,9 +137,7 @@ impl FromStr for Header {
 
         while p.len() > 0 {
             // Skip whitespace and commas used as separators
-            p = p.trim_left_matches(|c| {
-                return c == ',' || char::is_whitespace(c);
-            });
+            p = p.trim_left_matches(|c| { return c == ',' || char::is_whitespace(c); });
             // Find first '=' which delimits attribute name from value
             match p.find("=") {
                 Some(v) => {
@@ -199,33 +197,33 @@ impl FromStr for Header {
         }
 
         Ok(Header {
-            id: match id {
-                Some(id) => Some(id.to_string()),
-                None => None,
-            },
-            ts: ts,
-            nonce: match nonce {
-                Some(nonce) => Some(nonce.to_string()),
-                None => None,
-            },
-            mac: match mac {
-                Some(mac) => Some(Mac::from(mac)),
-                None => None,
-            },
-            ext: match ext {
-                Some(ext) => Some(ext.to_string()),
-                None => None,
-            },
-            hash: hash,
-            app: match app {
-                Some(app) => Some(app.to_string()),
-                None => None,
-            },
-            dlg: match dlg {
-                Some(dlg) => Some(dlg.to_string()),
-                None => None,
-            },
-        })
+               id: match id {
+                   Some(id) => Some(id.to_string()),
+                   None => None,
+               },
+               ts: ts,
+               nonce: match nonce {
+                   Some(nonce) => Some(nonce.to_string()),
+                   None => None,
+               },
+               mac: match mac {
+                   Some(mac) => Some(Mac::from(mac)),
+                   None => None,
+               },
+               ext: match ext {
+                   Some(ext) => Some(ext.to_string()),
+                   None => None,
+               },
+               hash: hash,
+               app: match app {
+                   Some(app) => Some(app.to_string()),
+                   None => None,
+               },
+               dlg: match dlg {
+                   Some(dlg) => Some(dlg.to_string()),
+                   None => None,
+               },
+           })
     }
 }
 
@@ -246,7 +244,7 @@ mod test {
                             None,
                             None,
                             None)
-            .is_err());
+                        .is_err());
     }
 
     #[test]
@@ -259,7 +257,7 @@ mod test {
                             None,
                             None,
                             None)
-            .is_err());
+                        .is_err());
     }
 
     #[test]
@@ -272,7 +270,7 @@ mod test {
                             None,
                             None,
                             None)
-            .is_err());
+                        .is_err());
     }
 
     #[test]
@@ -285,7 +283,7 @@ mod test {
                             None,
                             Some("a\"pp"),
                             None)
-            .is_err());
+                        .is_err());
     }
 
     #[test]
@@ -298,7 +296,7 @@ mod test {
                             None,
                             None,
                             Some("d\"lg"))
-            .is_err());
+                        .is_err());
     }
 
     #[test]
@@ -308,7 +306,7 @@ mod test {
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       hash=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\", \
                                       app=\"my-app\", dlg=\"my-authority\"")
-            .unwrap();
+                .unwrap();
         assert!(s.id == Some("dh37fgj492je".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));
@@ -338,7 +336,7 @@ mod test {
         let s = Header::from_str("id=\"xyz\", ts=\"1353832234\", \
                                       nonce=\"abc\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
-            .unwrap();
+                .unwrap();
         assert!(s.id == Some("xyz".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("abc".to_string()));
@@ -356,7 +354,7 @@ mod test {
         let s = Header::from_str(", id  =  \"dh37fgj492je\", ts=\"1353832234\", \
                                       nonce=\"j4h3g2\"  , , ext=\"some-app-ext-data\", \
                                       mac=\"6R4rV5iE+NPoym+WwjeHzjAGXUtLNIxmo1vpMofpLAE=\"")
-            .unwrap();
+                .unwrap();
         assert!(s.id == Some("dh37fgj492je".to_string()));
         assert!(s.ts == Some(Timespec::new(1353832234, 0)));
         assert!(s.nonce == Some("j4h3g2".to_string()));
@@ -390,7 +388,7 @@ mod test {
                             None,
                             None,
                             None)
-            .unwrap();
+                .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -410,7 +408,7 @@ mod test {
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
                             Some("my-dlg"))
-            .unwrap();
+                .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", formatted);
         assert!(formatted ==
@@ -431,7 +429,7 @@ mod test {
                             Some(vec![1, 2, 3, 4]),
                             Some("my-app"),
                             Some("my-dlg"))
-            .unwrap();
+                .unwrap();
         let formatted = format!("{}", s);
         println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();

@@ -4,7 +4,7 @@ extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
 
-use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
+use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
 use std::io::{Read, Write};
 use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
@@ -22,21 +22,24 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     let body = "foo=bar";
 
     let payload_hash;
-    let mut request = Request::from_url("POST", &url).unwrap();
+    let mut req_builder = RequestBuilder::from_url("POST", &url).unwrap();
+
     // for purposes of the test, we pretend we're using port 9999
-    request = request.port(9999);
+    req_builder = req_builder.port(9999);
 
     if send_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        request = request.hash(Some(&payload_hash));
+        req_builder = req_builder.hash(Some(&payload_hash));
     }
+    let request = req_builder.request();
 
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();
-    let mut res = client.post(url.as_str())
+    let mut res = client
+        .post(url.as_str())
         .headers(headers)
         .body(body)
         .send()
@@ -58,13 +61,15 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     assert_eq!(server_hdr.dlg, None);
 
     let payload_hash;
-    let mut response = request.make_response(&header);
+    let mut resp_builder = request.make_response_builder(&header);
     if require_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        response = response.hash(&payload_hash);
+        resp_builder = resp_builder.hash(&payload_hash);
     }
 
-    if !response.validate_header(&server_hdr, &credentials.key) {
+    if !resp_builder
+            .response()
+            .validate_header(&server_hdr, &credentials.key) {
         panic!("authentication of response header failed");
     }
 }
@@ -85,13 +90,15 @@ impl server::Handler for TestHandler {
 
         // build a request object based on what we know
         let payload_hash;
-        let mut request = Request::new("POST", "localhost", 9999, "/resource");
+        let mut req_builder = RequestBuilder::new("POST", "localhost", 9999, "/resource");
 
         // add a body hash, if we require such a thing
         if self.require_hash {
             payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-            request = request.hash(Some(&payload_hash));
+            req_builder = req_builder.hash(Some(&payload_hash));
         }
+
+        let request = req_builder.request();
 
         assert_eq!(hdr.id, Some("test-client".to_string()));
         assert_eq!(hdr.ext, None);
@@ -102,12 +109,12 @@ impl server::Handler for TestHandler {
 
         let body = "OK".as_bytes();
         let payload_hash;
-        let mut response = request.make_response(&hdr).ext("server-ext");
+        let mut resp_builder = request.make_response_builder(&hdr).ext("server-ext");
         if self.send_hash {
             payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body);
-            response = response.hash(&payload_hash);
+            resp_builder = resp_builder.hash(&payload_hash);
         }
-        let server_hdr = response.make_header(&key).unwrap();
+        let server_hdr = resp_builder.response().make_header(&key).unwrap();
         res.headers_mut()
             .set(ServerAuthorization(HawkScheme(server_hdr)));
 
@@ -130,9 +137,10 @@ fn run_client_server(client_send_hash: bool,
     let mut server = server::Server::http(("127.0.0.1", 0)).unwrap();
     let local_address = server.local_addr().unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
-    let client_thread = thread::spawn(move || {
-        client(client_send_hash, client_require_hash, local_address.port());
-    });
+    let client_thread =
+        thread::spawn(move || {
+                          client(client_send_hash, client_require_hash, local_address.port());
+                      });
 
     // finish both threads
     let client_res = client_thread.join();

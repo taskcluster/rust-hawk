@@ -30,9 +30,11 @@ This is a work-in-progress.
 * Hyper
   * Use refs in Header once 0.11 is out
 
+* Doc
+  * Server example in hawk/src/lib.rs
+
 * Rust
   * Fix passing around of hashes
-  * take and return &mut Self in builder pattern
   * allow passing more types in request building
   * use Into<Option<T>> to avoid passing Some(..)
   * use error-chain

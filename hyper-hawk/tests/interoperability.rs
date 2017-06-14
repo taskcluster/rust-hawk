@@ -5,7 +5,7 @@ extern crate hyper_hawk;
 extern crate url;
 
 use std::process::{Command, Child};
-use hawk::{Request, Credentials, Key, SHA256, PayloadHasher};
+use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
@@ -55,17 +55,19 @@ fn client_with_header() {
     let body = "foo=bar";
 
     let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-    let request = Request::from_url("POST", &url)
+    let request = RequestBuilder::from_url("POST", &url)
         .unwrap()
         .hash(Some(&payload_hash))
-        .ext(Some("ext-content"));
+        .ext(Some("ext-content"))
+        .request();
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
     headers.set(header::Authorization(HawkScheme(header.clone())));
     headers.set(header::ContentType::plaintext());
 
     let client = Client::new();
-    let mut res = client.post(url.as_str())
+    let mut res = client
+        .post(url.as_str())
         .headers(headers)
         .body(body)
         .send()
@@ -80,7 +82,10 @@ fn client_with_header() {
     {
         let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
         let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        let response = request.make_response(&header).hash(&payload_hash);
+        let response = request
+            .make_response_builder(&header)
+            .hash(&payload_hash)
+            .response();
         if !response.validate_header(&server_hdr, &credentials.key) {
             panic!("authentication of response header failed");
         }

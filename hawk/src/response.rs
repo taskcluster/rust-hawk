@@ -8,7 +8,7 @@ use error::HawkError;
 /// The structure is created from a request and then used to either create (server) or validate
 /// (client) a `Server-Authentication` header.
 ///
-/// Like `Request`, this follows the builder pattern, but only for the `hash` and `ext` properties.
+/// Like `Request`, Responses are built with ResponseBuilders.
 ///
 /// # Examples
 ///
@@ -25,44 +25,6 @@ pub struct Response<'a> {
 }
 
 impl<'a> Response<'a> {
-    /// Generate a new Response from a request header.
-    ///
-    /// This is more commonly accessed through `Request::make_response`.
-    pub fn from_request_header(req_header: &'a Header,
-                               method: &'a str,
-                               host: &'a str,
-                               port: u16,
-                               path: &'a str)
-                               -> Self {
-        Response {
-            method: method,
-            host: host,
-            port: port,
-            path: path,
-            req_header: req_header,
-            hash: None,
-            ext: None,
-        }
-    }
-
-    /// Set the content hash for the response.
-    ///
-    /// This should always be calculated from the response payload, not copied from a header.
-    pub fn hash(mut self, hash: &'a [u8]) -> Self {
-        // TODO: use into
-        self.hash = Some(hash);
-        self
-    }
-
-    /// Set the `ext` Hawk property for the response.
-    ///
-    /// This need only be set on the server; it is ignored in validating responses on the client.
-    pub fn ext(mut self, ext: &'a str) -> Self {
-        // TODO: use into
-        self.ext = Some(ext);
-        self
-    }
-
     /// Create a new Header for this response, based on the given request and request header
     pub fn make_header(&self, key: &Key) -> Result<Header, HawkError> {
         let mac;
@@ -175,9 +137,57 @@ impl<'a> Response<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ResponseBuilder<'a>(Response<'a>);
+
+impl<'a> ResponseBuilder<'a> {
+    /// Generate a new Response from a request header.
+    ///
+    /// This is more commonly accessed through `Request::make_response`.
+    pub fn from_request_header(req_header: &'a Header,
+                               method: &'a str,
+                               host: &'a str,
+                               port: u16,
+                               path: &'a str)
+                               -> Self {
+        ResponseBuilder(Response {
+                            method: method,
+                            host: host,
+                            port: port,
+                            path: path,
+                            req_header: req_header,
+                            hash: None,
+                            ext: None,
+                        })
+    }
+
+    /// Set the content hash for the response.
+    ///
+    /// This should always be calculated from the response payload, not copied from a header.
+    pub fn hash(mut self, hash: &'a [u8]) -> Self {
+        // TODO: use into
+        self.0.hash = Some(hash);
+        self
+    }
+
+    /// Set the `ext` Hawk property for the response.
+    ///
+    /// This need only be set on the server; it is ignored in validating responses on the client.
+    pub fn ext(mut self, ext: &'a str) -> Self {
+        // TODO: use into
+        self.0.ext = Some(ext);
+        self
+    }
+
+    /// Get the response from this builder
+    pub fn response(self) -> Response<'a> {
+        self.0
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::Response;
+    use super::ResponseBuilder;
     use header::Header;
     use credentials::Key;
     use mac::Mac;
@@ -193,13 +203,15 @@ mod test {
                     None,
                     None,
                     None)
-            .unwrap()
+                .unwrap()
     }
 
     #[test]
     fn test_validation_no_hash() {
         let req_header = make_req_header();
-        let resp = Response::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b");
+        let resp =
+            ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
+                .response();
         let mac: Mac = Mac::from(vec![48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71,
                                       120, 68, 238, 228, 40, 55, 64, 190, 73, 102, 123, 79, 185,
                                       199, 26, 62, 1, 137, 170]);
@@ -211,7 +223,7 @@ mod test {
                                         None,
                                         None,
                                         None)
-            .unwrap();
+                .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -220,7 +232,9 @@ mod test {
         // When a hash is provided in the response header, but no hash is added to the Response,
         // it is ignored (so validation succeeds)
         let req_header = make_req_header();
-        let resp = Response::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b");
+        let resp =
+            ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
+                .response();
         let mac: Mac = Mac::from(vec![33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161,
                                       215, 145, 22, 34, 206, 207, 242, 100, 33, 193, 36, 96, 149,
                                       133, 180, 4, 132, 87, 207, 238]);
@@ -232,7 +246,7 @@ mod test {
                                         Some(vec![1, 2, 3, 4]),
                                         None,
                                         None)
-            .unwrap();
+                .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -241,8 +255,10 @@ mod test {
         // When Response.hash is called, but no hash is in the hader, validation fails.
         let req_header = make_req_header();
         let hash = vec![1, 2, 3, 4];
-        let resp = Response::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
-            .hash(&hash[..]);
+        let resp =
+            ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
+                .hash(&hash[..])
+                .response();
         let mac: Mac = Mac::from(vec![48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71,
                                       120, 68, 238, 228, 40, 55, 64, 190, 73, 102, 123, 79, 185,
                                       199, 26, 62, 1, 137, 170]);
@@ -254,7 +270,7 @@ mod test {
                                         None,
                                         None,
                                         None)
-            .unwrap();
+                .unwrap();
         assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -264,8 +280,10 @@ mod test {
         // the two must match
         let req_header = make_req_header();
         let hash = vec![1, 2, 3, 4];
-        let resp = Response::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
-            .hash(&hash[..]);
+        let resp =
+            ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
+                .hash(&hash[..])
+                .response();
         let mac: Mac = Mac::from(vec![33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161,
                                       215, 145, 22, 34, 206, 207, 242, 100, 33, 193, 36, 96, 149,
                                       133, 180, 4, 132, 87, 207, 238]);
@@ -277,13 +295,15 @@ mod test {
                                         Some(vec![1, 2, 3, 4]),
                                         None,
                                         None)
-            .unwrap();
+                .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
 
         // a different supplied hash won't match..
         let hash = vec![99, 99, 99, 99];
-        let resp = Response::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
-            .hash(&hash[..]);
+        let resp =
+            ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
+                .hash(&hash[..])
+                .response();
         assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 }
