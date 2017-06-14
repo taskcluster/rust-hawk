@@ -28,25 +28,21 @@ impl<'a> Response<'a> {
     /// Create a new Header for this response, based on the given request and request header
     pub fn make_header(&self, key: &Key) -> Result<Header, HawkError> {
         let mac;
-        // TODO: use .ok_or here (but this is hard with `ref nonce`)
-        if let Some(ts) = self.req_header.ts {
-            if let Some(ref nonce) = self.req_header.nonce {
-                mac = Mac::new(MacType::Response,
-                               key,
-                               ts,
-                               nonce,
-                               self.method,
-                               self.host,
-                               self.port,
-                               self.path,
-                               self.hash,
-                               self.ext)?;
-            } else {
-                return Err(HawkError::MissingAttributes);
-            }
-        } else {
-            return Err(HawkError::MissingAttributes);
-        }
+        let ts = self.req_header.ts.ok_or(HawkError::MissingAttributes)?;
+        let nonce = self.req_header
+            .nonce
+            .as_ref()
+            .ok_or(HawkError::MissingAttributes)?;
+        mac = Mac::new(MacType::Response,
+                       key,
+                       ts,
+                       nonce,
+                       self.method,
+                       self.host,
+                       self.port,
+                       self.path,
+                       self.hash,
+                       self.ext)?;
 
         // Per JS implementation, the Server-Authorization header includes only mac, hash, and ext
         Header::new(None,
