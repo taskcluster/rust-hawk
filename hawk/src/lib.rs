@@ -23,7 +23,7 @@
 //!         key: Key::new(vec![99u8; 32], &SHA256),
 //!     };
 //!
-//!     let payload_hash = PayloadHasher::hash(&b"text/plain"[..], &SHA256, &b"request-body"[..]);
+//!     let payload_hash = PayloadHasher::hash("text/plain", &SHA256, "request-body");
 //!
 //!     // provide the details of the request to be authorized
 //!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
