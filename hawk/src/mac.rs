@@ -7,6 +7,12 @@ use std::ops::Deref;
 use error::HawkError;
 use time;
 
+/// The kind of MAC calcuation (corresponding to the first line of the message)
+pub enum MacType {
+    Header,
+    Response,
+}
+
 /// Mac represents a message authentication code, the signature in a Hawk transaction.
 ///
 /// This class supports creating Macs using the Hawk specification, and comparing Macs
@@ -15,7 +21,7 @@ use time;
 pub struct Mac(Vec<u8>);
 
 impl Mac {
-    pub fn new(response: bool,
+    pub fn new(mac_type: MacType,
                key: &Key,
                ts: time::Timespec,
                nonce: &str,
@@ -28,11 +34,12 @@ impl Mac {
                -> Result<Mac, HawkError> {
         let mut buffer: Vec<u8> = vec![];
 
-        if response {
-            write!(buffer, "hawk.1.response\n")?;
-        } else {
-            write!(buffer, "hawk.1.header\n")?;
-        }
+        write!(buffer,
+               "{}\n",
+               match mac_type {
+                   MacType::Header => "hawk.1.header",
+                   MacType::Response => "hawk.1.response",
+               })?;
         write!(buffer, "{}\n", ts.sec)?;
         write!(buffer, "{}\n", nonce)?;
         write!(buffer, "{}\n", method)?;
@@ -88,7 +95,7 @@ impl PartialEq for Mac {
 
 #[cfg(test)]
 mod test {
-    use super::Mac;
+    use super::{Mac, MacType};
     use time::Timespec;
     use credentials::Key;
     use ring::digest;
@@ -102,7 +109,7 @@ mod test {
     #[test]
     fn test_make_mac() {
         let key = key();
-        let mac = Mac::new(false,
+        let mac = Mac::new(MacType::Header,
                            &key,
                            Timespec::new(1000, 100),
                            "nonny",
@@ -123,7 +130,7 @@ mod test {
     fn test_make_mac_hash() {
         let key = key();
         let hash = vec![1, 2, 3, 4, 5];
-        let mac = Mac::new(false,
+        let mac = Mac::new(MacType::Header,
                            &key,
                            Timespec::new(1000, 100),
                            "nonny",
@@ -144,7 +151,7 @@ mod test {
     fn test_make_mac_ext() {
         let key = key();
         let ext = "ext-data".to_string();
-        let mac = Mac::new(false,
+        let mac = Mac::new(MacType::Header,
                            &key,
                            Timespec::new(1000, 100),
                            "nonny",

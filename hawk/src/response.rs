@@ -1,4 +1,4 @@
-use mac::Mac;
+use mac::{Mac, MacType};
 use header::Header;
 use credentials::Key;
 use error::HawkError;
@@ -31,7 +31,7 @@ impl<'a> Response<'a> {
         // TODO: use .ok_or here (but this is hard with `ref nonce`)
         if let Some(ts) = self.req_header.ts {
             if let Some(ref nonce) = self.req_header.nonce {
-                mac = Mac::new(true,
+                mac = Mac::new(MacType::Response,
                                key,
                                ts,
                                nonce,
@@ -99,7 +99,7 @@ impl<'a> Response<'a> {
         };
 
         // first verify the MAC
-        match Mac::new(true,
+        match Mac::new(MacType::Response,
                        key,
                        ts,
                        nonce,

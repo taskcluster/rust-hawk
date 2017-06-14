@@ -2,7 +2,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::ToBase64;
 use time;
 use url::Url;
-use mac::Mac;
+use mac::{Mac, MacType};
 use header::Header;
 use response::ResponseBuilder;
 use credentials::{Credentials, Key};
@@ -56,7 +56,7 @@ impl<'a> Request<'a> {
                             ts: time::Timespec,
                             nonce: String)
                             -> Result<Header, HawkError> {
-        let mac = Mac::new(false,
+        let mac = Mac::new(MacType::Header,
                            &credentials.key,
                            ts,
                            &nonce,
@@ -130,7 +130,7 @@ impl<'a> Request<'a> {
         };
 
         // first verify the MAC
-        match Mac::new(false,
+        match Mac::new(MacType::Header,
                        key,
                        ts,
                        nonce,
