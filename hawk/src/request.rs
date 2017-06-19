@@ -255,26 +255,26 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Set the content hash for the request
-    pub fn hash(mut self, hash: Option<&'a [u8]>) -> Self {
-        self.0.hash = hash;
+    pub fn hash<H: Into<Option<&'a [u8]>>>(mut self, hash: H) -> Self {
+        self.0.hash = hash.into();
         self
     }
 
     /// Set the `ext` Hawk property for the request
-    pub fn ext(mut self, ext: Option<&'a str>) -> Self {
-        self.0.ext = ext;
+    pub fn ext<S: Into<Option<&'a str>>>(mut self, ext: S) -> Self {
+        self.0.ext = ext.into();
         self
     }
 
     /// Set the `app` Hawk property for the request
-    pub fn app(mut self, app: Option<&'a str>) -> Self {
-        self.0.app = app;
+    pub fn app<S: Into<Option<&'a str>>>(mut self, app: S) -> Self {
+        self.0.app = app.into();
         self
     }
 
     /// Set the `dlg` Hawk property for the request
-    pub fn dlg(mut self, dlg: Option<&'a str>) -> Self {
-        self.0.dlg = dlg;
+    pub fn dlg<S: Into<Option<&'a str>>>(mut self, dlg: S) -> Self {
+        self.0.dlg = dlg.into();
         self
     }
 
@@ -340,9 +340,9 @@ mod test {
         let hash = vec![0u8];
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo")
             .hash(Some(&hash[..]))
-            .ext(Some("ext"))
-            .app(Some("app"))
-            .dlg(Some("dlg"))
+            .ext("ext")
+            .app("app")
+            .dlg("dlg")
             .request();
 
         assert_eq!(req.method, "GET");
@@ -406,9 +406,9 @@ mod test {
         let hash = vec![0u8];
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo")
             .hash(Some(&hash[..]))
-            .ext(Some("ext"))
-            .app(Some("app"))
-            .dlg(Some("dlg"))
+            .ext("ext")
+            .app("app")
+            .dlg("dlg")
             .request();
         let credentials = Credentials {
             id: "me".to_string(),

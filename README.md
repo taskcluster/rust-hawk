@@ -34,6 +34,4 @@ This is a work-in-progress.
   * Server example in hawk/src/lib.rs
 
 * Rust
-  * use Into<Option<T>> to avoid passing Some(..)
-  * use Option<AsRef<[u8]>> for ext, hash, etc. in Mac
   * use error-chain

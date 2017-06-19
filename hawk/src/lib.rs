@@ -27,7 +27,7 @@
 //!
 //!     // provide the details of the request to be authorized
 //!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
-//!         .hash(Some(&payload_hash))
+//!         .hash(&payload_hash[..])
 //!         .request();
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
@@ -69,7 +69,7 @@
 //!    // build a request object based on what we know
 //!    let hash = vec![1, 2, 3, 4];
 //!    let request = RequestBuilder::new("GET", "localhost", 443, "/resource")
-//!        .hash(Some(&hash))
+//!        .hash(&hash[..])
 //!        .request();
 //!
 //!    let key = Key::new(vec![99u8; 32], &SHA256);

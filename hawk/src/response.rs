@@ -160,18 +160,16 @@ impl<'a> ResponseBuilder<'a> {
     /// Set the content hash for the response.
     ///
     /// This should always be calculated from the response payload, not copied from a header.
-    pub fn hash(mut self, hash: &'a [u8]) -> Self {
-        // TODO: use into
-        self.0.hash = Some(hash);
+    pub fn hash<H: Into<Option<&'a [u8]>>>(mut self, hash: H) -> Self {
+        self.0.hash = hash.into();
         self
     }
 
     /// Set the `ext` Hawk property for the response.
     ///
     /// This need only be set on the server; it is ignored in validating responses on the client.
-    pub fn ext(mut self, ext: &'a str) -> Self {
-        // TODO: use into
-        self.0.ext = Some(ext);
+    pub fn ext<S: Into<Option<&'a str>>>(mut self, ext: S) -> Self {
+        self.0.ext = ext.into();
         self
     }
 

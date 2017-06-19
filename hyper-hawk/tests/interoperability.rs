@@ -57,8 +57,8 @@ fn client_with_header() {
     let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
     let request = RequestBuilder::from_url("POST", &url)
         .unwrap()
-        .hash(Some(&payload_hash))
-        .ext(Some("ext-content"))
+        .hash(&payload_hash[..])
+        .ext("ext-content")
         .request();
     let mut headers = hyper::header::Headers::new();
     let header = request.make_header(&credentials).unwrap();
@@ -84,7 +84,7 @@ fn client_with_header() {
         let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
         let response = request
             .make_response_builder(&header)
-            .hash(&payload_hash)
+            .hash(&payload_hash[..])
             .response();
         if !response.validate_header(&server_hdr, &credentials.key) {
             panic!("authentication of response header failed");

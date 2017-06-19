@@ -29,7 +29,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
 
     if send_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        req_builder = req_builder.hash(Some(&payload_hash));
+        req_builder = req_builder.hash(&payload_hash[..]);
     }
     let request = req_builder.request();
 
@@ -64,7 +64,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     let mut resp_builder = request.make_response_builder(&header);
     if require_hash {
         payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        resp_builder = resp_builder.hash(&payload_hash);
+        resp_builder = resp_builder.hash(&payload_hash[..]);
     }
 
     if !resp_builder
@@ -95,7 +95,7 @@ impl server::Handler for TestHandler {
         // add a body hash, if we require such a thing
         if self.require_hash {
             payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-            req_builder = req_builder.hash(Some(&payload_hash));
+            req_builder = req_builder.hash(&payload_hash[..]);
         }
 
         let request = req_builder.request();
@@ -112,7 +112,7 @@ impl server::Handler for TestHandler {
         let mut resp_builder = request.make_response_builder(&hdr).ext("server-ext");
         if self.send_hash {
             payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body);
-            resp_builder = resp_builder.hash(&payload_hash);
+            resp_builder = resp_builder.hash(&payload_hash[..]);
         }
         let server_hdr = resp_builder.response().make_header(&key).unwrap();
         res.headers_mut()
