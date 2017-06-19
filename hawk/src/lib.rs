@@ -87,6 +87,9 @@ extern crate rand;
 #[macro_use]
 extern crate pretty_assertions;
 
+#[macro_use]
+extern crate error_chain;
+
 mod header;
 pub use header::Header;
 
@@ -100,7 +103,7 @@ mod response;
 pub use response::{Response, ResponseBuilder};
 
 mod error;
-pub use error::HawkError;
+pub use error::*;
 
 mod payload;
 pub use payload::PayloadHasher;

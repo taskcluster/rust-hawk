@@ -8,7 +8,7 @@ use response::ResponseBuilder;
 use credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
-use error::HawkError;
+use error::*;
 use time::{now, Duration};
 
 /// Request represents a single HTTP request.
@@ -45,7 +45,7 @@ pub struct Request<'a> {
 impl<'a> Request<'a> {
     /// Create a new Header for this request, inventing a new nonce and setting the
     /// timestamp to the current time.
-    pub fn make_header(&self, credentials: &Credentials) -> Result<Header, HawkError> {
+    pub fn make_header(&self, credentials: &Credentials) -> Result<Header> {
         let nonce = random_string(10);
         self.make_header_full(credentials, time::now().to_timespec(), nonce)
     }
@@ -56,7 +56,7 @@ impl<'a> Request<'a> {
                                credentials: &Credentials,
                                ts: time::Timespec,
                                nonce: S)
-                               -> Result<Header, HawkError>
+                               -> Result<Header>
         where S: Into<String>
     {
         let nonce = nonce.into();
@@ -210,7 +210,7 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Create a new request with the host, port, and path determined from the URL.
-    pub fn from_url(method: &'a str, url: &'a Url) -> Result<Self, HawkError> {
+    pub fn from_url(method: &'a str, url: &'a Url) -> Result<Self> {
         let (host, port, path) = RequestBuilder::parse_url(url)?;
         Ok(RequestBuilder(Request {
                               method: method,
@@ -249,7 +249,7 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Set the hostname, port, and path for the request, from a string URL.
-    pub fn url(self, url: &'a Url) -> Result<Self, HawkError> {
+    pub fn url(self, url: &'a Url) -> Result<Self> {
         let (host, port, path) = RequestBuilder::parse_url(url)?;
         Ok(self.path(path).host(host).port(port))
     }
@@ -283,11 +283,11 @@ impl<'a> RequestBuilder<'a> {
         self.0
     }
 
-    fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str), HawkError> {
+    fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str)> {
         let host = url.host_str()
-            .ok_or(HawkError::UrlError(format!("url {} has no host", url)))?;
+            .ok_or(format!("url {} has no host", url))?;
         let port = url.port_or_known_default()
-            .ok_or(HawkError::UrlError(format!("url {} has no port", url)))?;
+            .ok_or(format!("url {} has no port", url))?;
         let path = url.path();
         Ok((host, port, path))
     }

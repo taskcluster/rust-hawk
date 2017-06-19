@@ -4,7 +4,7 @@ use rustc_serialize::base64::ToBase64;
 use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
-use error::HawkError;
+use error::*;
 use time;
 
 /// The kind of MAC calcuation (corresponding to the first line of the message)
@@ -31,7 +31,7 @@ impl Mac {
                path: &str,
                hash: Option<&[u8]>,
                ext: Option<&str>)
-               -> Result<Mac, HawkError> {
+               -> Result<Mac> {
         let mut buffer: Vec<u8> = vec![];
 
         write!(buffer,

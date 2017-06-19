@@ -32,6 +32,3 @@ This is a work-in-progress.
 
 * Doc
   * Server example in hawk/src/lib.rs
-
-* Rust
-  * use error-chain

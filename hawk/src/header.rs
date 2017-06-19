@@ -3,7 +3,7 @@ use rustc_serialize::base64::{FromBase64, ToBase64};
 use std::fmt;
 use std::str::FromStr;
 use mac::Mac;
-use error::HawkError;
+use error::*;
 use time::Timespec;
 
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
@@ -38,7 +38,7 @@ impl Header {
                   hash: Option<Vec<u8>>,
                   app: Option<S>,
                   dlg: Option<S>)
-                  -> Result<Header, HawkError>
+                  -> Result<Header>
         where S: Into<String>
     {
         Ok(Header {
@@ -54,13 +54,13 @@ impl Header {
     }
 
     /// Check a header component for validity.
-    fn check_component<S>(value: Option<S>) -> Result<Option<String>, HawkError>
+    fn check_component<S>(value: Option<S>) -> Result<Option<String>>
         where S: Into<String>
     {
         if let Some(value) = value {
             let value = value.into();
             if value.contains("\"") {
-                return Err(HawkError::InvalidHeaderValue);
+                bail!("Hawk headers cannot contain `\\`");
             }
             Ok(Some(value))
         } else {
@@ -120,8 +120,8 @@ impl fmt::Display for Header {
 }
 
 impl FromStr for Header {
-    type Err = HawkError;
-    fn from_str(s: &str) -> Result<Header, HawkError> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Header> {
         let mut p = &s[..];
 
         // Required attributes
@@ -143,11 +143,11 @@ impl FromStr for Header {
                 Some(v) => {
                     let attr = &p[..v].trim();
                     if p.len() < v + 1 {
-                        return Err(HawkError::HeaderParseError);
+                        bail!(ErrorKind::HeaderParseError);
                     }
                     p = (&p[v + 1..]).trim_left();
                     if !p.starts_with("\"") {
-                        return Err(HawkError::HeaderParseError);
+                        bail!(ErrorKind::HeaderParseError);
                     }
                     p = &p[1..];
                     // We have poor RFC 7235 compliance here as we ought to support backslash
@@ -160,28 +160,23 @@ impl FromStr for Header {
                             match *attr {
                                 "id" => id = Some(val),
                                 "ts" => {
-                                    match i64::from_str(val) {
-                                        Ok(sec) => ts = Some(Timespec::new(sec, 0)),
-                                        Err(_) => return Err(HawkError::InvalidTimestamp),
-                                    };
+                                    let epoch = i64::from_str(val)
+                                        .chain_err(|| "Error parsing `ts` field")?;
+                                    ts = Some(Timespec::new(epoch, 0));
                                 }
                                 "mac" => {
-                                    match val.from_base64() {
-                                        Ok(v) => mac = Some(v),
-                                        Err(_) => return Err(HawkError::Base64DecodeError),
-                                    }
+                                    mac = Some(val.from_base64()
+                                                   .chain_err(|| "Error parsing `mac` field")?);
                                 }
                                 "nonce" => nonce = Some(val),
                                 "ext" => ext = Some(val),
                                 "hash" => {
-                                    match val.from_base64() {
-                                        Ok(v) => hash = Some(v),
-                                        Err(_) => return Err(HawkError::Base64DecodeError),
-                                    }
+                                    hash = Some(val.from_base64()
+                                                    .chain_err(|| "Error parsing `hash` field")?);
                                 }
                                 "app" => app = Some(val),
                                 "dlg" => dlg = Some(val),
-                                _ => return Err(HawkError::UnknownAttribute),
+                                _ => bail!("Invalid Hawk field {}", *attr),
                             };
                             // Break if we are at end of string, otherwise skip separator
                             if p.len() < v + 1 {
@@ -189,10 +184,10 @@ impl FromStr for Header {
                             }
                             p = &p[v + 1..].trim_left();
                         }
-                        None => return Err(HawkError::HeaderParseError),
+                        None => bail!(ErrorKind::HeaderParseError),
                     }
                 }
-                None => return Err(HawkError::HeaderParseError),
+                None => bail!(ErrorKind::HeaderParseError),
             };
         }
 
@@ -317,6 +312,15 @@ mod test {
         assert!(s.ext == Some("some-app-ext-data".to_string()));
         assert!(s.app == Some("my-app".to_string()));
         assert!(s.dlg == Some("my-authority".to_string()));
+    }
+
+    #[test]
+    fn from_str_invalid_mac() {
+        let r = Header::from_str("id=\"dh37fgj492je\", ts=\"1353832234\", \
+                                      nonce=\"j4h3g2\", ext=\"some-app-ext-data\", \
+                                      mac=\"6!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!AE=\", \
+                                      app=\"my-app\", dlg=\"my-authority\"");
+        assert!(r.is_err());
     }
 
     #[test]

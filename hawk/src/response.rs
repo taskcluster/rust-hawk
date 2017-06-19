@@ -1,7 +1,7 @@
 use mac::{Mac, MacType};
 use header::Header;
 use credentials::Key;
-use error::HawkError;
+use error::*;
 
 /// A Response represents a response from an HTTP server.
 ///
@@ -26,13 +26,15 @@ pub struct Response<'a> {
 
 impl<'a> Response<'a> {
     /// Create a new Header for this response, based on the given request and request header
-    pub fn make_header(&self, key: &Key) -> Result<Header, HawkError> {
+    pub fn make_header(&self, key: &Key) -> Result<Header> {
         let mac;
-        let ts = self.req_header.ts.ok_or(HawkError::MissingAttributes)?;
+        let ts = self.req_header
+            .ts
+            .ok_or("Missing `ts` atttribute in Hawk header")?;
         let nonce = self.req_header
             .nonce
             .as_ref()
-            .ok_or(HawkError::MissingAttributes)?;
+            .ok_or("Missing `nonce` attribute in Hawk header")?;
         mac = Mac::new(MacType::Response,
                        key,
                        ts,
