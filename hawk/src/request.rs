@@ -91,6 +91,38 @@ impl<'a> Request<'a> {
                     })
     }
 
+    /// Make a "bewit" that can be attached to a URL to authenticate GET access.
+    pub fn make_bewit(&self,
+                      credentials: &Credentials,
+                      ts: time::Timespec,
+                      ttl: Duration)
+                      -> Result<String> {
+        let exp = ts + ttl;
+        // note that this includes `method` and `hash` even though they must always be GET and None
+        // for bewits.  If they aren't, then, the bewit just won't validate -- no need to catch
+        // that now
+        let mac = Mac::new(MacType::Bewit,
+                           &credentials.key,
+                           exp,
+                           "",
+                           self.method,
+                           self.host,
+                           self.port,
+                           self.path,
+                           self.hash,
+                           self.ext)?;
+        let raw = format!("{}\\{}\\{}\\{}",
+                          credentials.id,
+                          exp.sec,
+                          base64::encode(&mac),
+                          match self.ext {
+                              Some(e) => e,
+                              None => "",
+                          });
+
+        Ok(base64::encode_config(&raw, base64::URL_SAFE_NO_PAD))
+    }
+
     /// Validate the given header.  This validates that the `mac` field matches that calculated
     /// using the other header fields and the given request information.
     ///
@@ -552,5 +584,19 @@ mod test {
         assert!(!req.validate_header(&header,
                                      &Key::new("tok", &digest::SHA256),
                                      Duration::weeks(52000)));
+    }
+
+    #[test]
+    fn test_bewit() {
+        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
+        let credentials = Credentials {
+            id: "me".to_string(),
+            key: Key::new("tok", &digest::SHA256),
+        };
+        assert_eq!(req.make_bewit(&credentials,
+                                  Timespec::new(1353832234, 0),
+                                  Duration::minutes(10))
+                       .unwrap(),
+                   "bWVcMTM1MzgzMjgzNFxTMXVoSVRsU0M4TFlBOFJjMG5SN0FjSm55NUc4eGYvZFhEZ1J5SFlFMXBnPVw");
     }
 }

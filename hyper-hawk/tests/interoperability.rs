@@ -14,12 +14,10 @@ use hyper::Client;
 use hyper::header;
 use url::Url;
 
-// the port the JS side uses
-const PORT: u16 = 62835;
-const CALLBACK_PORT: u16 = PORT + 1;
-
-fn start_node_script(script: &str) -> Child {
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", CALLBACK_PORT)).unwrap();
+// TODO: send just the callback port, then read the port from the node script
+fn start_node_script(script: &str, port: u16) -> Child {
+    let callback_port = port + 1;
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", callback_port)).unwrap();
 
     // check for `node_modules' first
     let path = Path::new("tests/node/node_modules");
@@ -29,8 +27,8 @@ fn start_node_script(script: &str) -> Child {
 
     let child = Command::new("node")
         .arg(script)
-        .arg(format!("{}", PORT))
-        .arg(format!("{}", CALLBACK_PORT))
+        .arg(format!("{}", port))
+        .arg(format!("{}", callback_port))
         .current_dir("tests/node")
         .spawn()
         .expect("node command failed to start");
@@ -43,15 +41,20 @@ fn start_node_script(script: &str) -> Child {
     child
 }
 
-#[test]
-fn client_with_header() {
-    let mut child = start_node_script("serve-one.js");
-
-    let credentials = Credentials {
+fn make_credentials() -> Credentials {
+    Credentials {
         id: "dh37fgj492je".to_string(),
         key: Key::new("werxhqb98rpaxn39848xrunpaw3489ruxnpa98w4rxn", &SHA256),
-    };
-    let url = Url::parse(&format!("http://localhost:{}/resource", PORT)).unwrap();
+    }
+}
+
+#[test]
+fn client_with_header() {
+    let port = 65280;
+    let mut child = start_node_script("serve-one.js", port);
+
+    let credentials = make_credentials();
+    let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
     let body = "foo=bar";
 
     let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
@@ -90,6 +93,39 @@ fn client_with_header() {
             panic!("authentication of response header failed");
         }
     }
+
+    drop(res);
+    drop(client); // close the kept-alive connection
+
+    child.wait().expect("Failure waiting for child");
+}
+
+#[test]
+fn client_with_bewit() {
+    let port = 65290;
+    let mut child = start_node_script("serve-one.js", port);
+
+    let credentials = make_credentials();
+    let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
+    let request = RequestBuilder::from_url("GET", &url)
+        .unwrap()
+        .ext("ext-content")
+        .request();
+
+    let ts = time::now().to_timespec(); // TODO: should be part of make_bewit
+    let bewit = request
+        .make_bewit(&credentials, ts, time::Duration::minutes(1))
+        .unwrap();
+    let mut url = url.clone();
+    url.set_query(Some(&format!("bewit={}", bewit)));
+
+    let client = Client::new();
+    let mut res = client.get(url.as_str()).send().unwrap();
+
+    let mut body = String::new();
+    res.read_to_string(&mut body).unwrap();
+    assert!(res.status == hyper::Ok);
+    assert!(body == "Hello Steve ext-content");
 
     drop(res);
     drop(client); // close the kept-alive connection

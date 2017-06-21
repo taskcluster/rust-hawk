@@ -10,6 +10,7 @@ use time;
 pub enum MacType {
     Header,
     Response,
+    Bewit,
 }
 
 /// Mac represents a message authentication code, the signature in a Hawk transaction.
@@ -38,6 +39,7 @@ impl Mac {
                match mac_type {
                    MacType::Header => "hawk.1.header",
                    MacType::Response => "hawk.1.response",
+                   MacType::Bewit => "hawk.1.bewit",
                })?;
         write!(buffer, "{}\n", ts.sec)?;
         write!(buffer, "{}\n", nonce)?;

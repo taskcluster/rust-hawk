@@ -31,26 +31,41 @@ var server;
 // Create HTTP server
 
 var handler = function (req, res) {
-  var request_body = "";
-  req.on('data', function (data) {
-    request_body += data;
-  });
-  req.on('end', function () {
-    Hawk.server.authenticate(req,
+  if (req.method === 'POST') {
+    // for POST, parse the body and expect a header
+    var request_body = '';
+    req.on('data', function (data) {
+      request_body += data;
+    });
+    req.on('end', function () {
+      Hawk.server.authenticate(req,
+        credentialsFunc,
+        {payload: request_body},
+        function (err, credentials, artifacts) {
+          var payload = (!err ? 'Hello ' + credentials.user + ' ' + artifacts.ext : 'Shoosh!');
+          var headers = {
+            'Content-Type': 'text/plain',
+            'Server-Authorization': Hawk.server.header(credentials, artifacts, { payload, contentType: 'text/plain' })
+          };
+
+          res.writeHead(!err ? 200 : 401, headers);
+          res.end(payload);
+          server.close();
+        });
+    });
+  } else {
+    // for GET, expect a bewit, and don't send a server-authorization response header
+    Hawk.uri.authenticate(req,
       credentialsFunc,
-      {payload: request_body},
+      {},
       function (err, credentials, artifacts) {
         var payload = (!err ? 'Hello ' + credentials.user + ' ' + artifacts.ext : 'Shoosh!');
-        var headers = {
-          'Content-Type': 'text/plain',
-          'Server-Authorization': Hawk.server.header(credentials, artifacts, { payload, contentType: 'text/plain' })
-        };
-
+        var headers = {'Content-Type': 'text/plain'};
         res.writeHead(!err ? 200 : 401, headers);
         res.end(payload);
         server.close();
       });
-  });
+  }
 };
 
 var PORT = parseInt(process.argv[2]);
