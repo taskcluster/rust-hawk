@@ -7,7 +7,7 @@ This is a Rust implementation of (Hawk)[https://github.com/hueniverse/hawk].
 
 ### For release
 
-* Bewit support
+* Bewit support (creating done)
 * Add a server example in src/lib.rs
 
 ### Later
