@@ -299,12 +299,7 @@ fn random_string(bytes: usize) -> String {
     let mut rng = rand::thread_rng();
     let mut bytes = vec![0u8; bytes];
     rng.fill_bytes(&mut bytes);
-    bytes.to_base64(base64::Config {
-                        char_set: base64::CharacterSet::Standard,
-                        newline: base64::Newline::LF,
-                        pad: true,
-                        line_length: None,
-                    })
+    bytes.to_base64(base64::STANDARD)
 }
 
 #[cfg(test)]

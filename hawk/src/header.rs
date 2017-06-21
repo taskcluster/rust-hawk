@@ -71,12 +71,6 @@ impl Header {
     /// Format the header for transmission in an Authorization header, omitting the `"Hawk "`
     /// prefix.
     pub fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let base64_config = base64::Config {
-            char_set: base64::CharacterSet::Standard,
-            newline: base64::Newline::LF,
-            pad: true,
-            line_length: None,
-        };
         let mut sep = "";
         if let Some(ref id) = self.id {
             write!(f, "{}id=\"{}\"", sep, id)?;
@@ -91,7 +85,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref mac) = self.mac {
-            write!(f, "{}mac=\"{}\"", sep, mac.to_base64(base64_config))?;
+            write!(f, "{}mac=\"{}\"", sep, mac.to_base64(base64::STANDARD))?;
             sep = ", ";
         }
         if let Some(ref ext) = self.ext {
@@ -99,7 +93,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref hash) = self.hash {
-            write!(f, "{}hash=\"{}\"", sep, hash.to_base64(base64_config))?;
+            write!(f, "{}hash=\"{}\"", sep, hash.to_base64(base64::STANDARD))?;
             sep = ", ";
         }
         if let Some(ref app) = self.app {

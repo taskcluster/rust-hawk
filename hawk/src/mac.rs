@@ -48,14 +48,7 @@ impl Mac {
         write!(buffer, "{}\n", port)?;
 
         if let Some(ref h) = hash {
-            write!(buffer,
-                   "{}\n",
-                   h.to_base64(base64::Config {
-                                   char_set: base64::CharacterSet::Standard,
-                                   newline: base64::Newline::LF,
-                                   pad: true,
-                                   line_length: None,
-                               }))?;
+            write!(buffer, "{}\n", h.to_base64(base64::STANDARD))?;
         } else {
             write!(buffer, "\n")?;
         }
