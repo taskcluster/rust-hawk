@@ -1,5 +1,4 @@
-use rustc_serialize::base64;
-use rustc_serialize::base64::ToBase64;
+use base64;
 use time;
 use url::Url;
 use mac::{Mac, MacType};
@@ -299,7 +298,7 @@ fn random_string(bytes: usize) -> String {
     let mut rng = rand::thread_rng();
     let mut bytes = vec![0u8; bytes];
     rng.fill_bytes(&mut bytes);
-    bytes.to_base64(base64::STANDARD)
+    base64::encode(&bytes)
 }
 
 #[cfg(test)]

@@ -1,5 +1,4 @@
-use rustc_serialize::base64;
-use rustc_serialize::base64::{FromBase64, ToBase64};
+use base64;
 use std::fmt;
 use std::str::FromStr;
 use mac::Mac;
@@ -85,7 +84,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref mac) = self.mac {
-            write!(f, "{}mac=\"{}\"", sep, mac.to_base64(base64::STANDARD))?;
+            write!(f, "{}mac=\"{}\"", sep, base64::encode(mac))?;
             sep = ", ";
         }
         if let Some(ref ext) = self.ext {
@@ -93,7 +92,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref hash) = self.hash {
-            write!(f, "{}hash=\"{}\"", sep, hash.to_base64(base64::STANDARD))?;
+            write!(f, "{}hash=\"{}\"", sep, base64::encode(hash))?;
             sep = ", ";
         }
         if let Some(ref app) = self.app {
@@ -159,13 +158,13 @@ impl FromStr for Header {
                                     ts = Some(Timespec::new(epoch, 0));
                                 }
                                 "mac" => {
-                                    mac = Some(val.from_base64()
+                                    mac = Some(base64::decode(val)
                                                    .chain_err(|| "Error parsing `mac` field")?);
                                 }
                                 "nonce" => nonce = Some(val),
                                 "ext" => ext = Some(val),
                                 "hash" => {
-                                    hash = Some(val.from_base64()
+                                    hash = Some(base64::decode(val)
                                                     .chain_err(|| "Error parsing `hash` field")?);
                                 }
                                 "app" => app = Some(val),

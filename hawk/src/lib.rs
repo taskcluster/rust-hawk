@@ -77,7 +77,7 @@
 //!        panic!("header validation failed. Is it 2117 already?");
 //!    }
 //! }
-extern crate rustc_serialize;
+extern crate base64;
 extern crate time;
 extern crate ring;
 extern crate url;

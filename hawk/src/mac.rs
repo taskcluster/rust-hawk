@@ -1,6 +1,5 @@
 use credentials::Key;
-use rustc_serialize::base64;
-use rustc_serialize::base64::ToBase64;
+use base64;
 use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
@@ -48,7 +47,7 @@ impl Mac {
         write!(buffer, "{}\n", port)?;
 
         if let Some(ref h) = hash {
-            write!(buffer, "{}\n", h.to_base64(base64::STANDARD))?;
+            write!(buffer, "{}\n", base64::encode(h))?;
         } else {
             write!(buffer, "\n")?;
         }
@@ -59,6 +58,12 @@ impl Mac {
         };
 
         return Ok(Mac(key.sign(buffer.as_ref())));
+    }
+}
+
+impl AsRef<[u8]> for Mac {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
     }
 }
 
