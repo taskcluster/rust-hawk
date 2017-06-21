@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "hawk":                         "*",
-    "request":                     "*"
-  }
-}
-
