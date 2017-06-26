@@ -112,9 +112,8 @@ fn client_with_bewit() {
         .ext("ext-content")
         .request();
 
-    let ts = time::now().to_timespec(); // TODO: should be part of make_bewit
     let bewit = request
-        .make_bewit(&credentials, ts, time::Duration::minutes(1))
+        .make_bewit(&credentials, time::Duration::minutes(1))
         .unwrap();
     let mut url = url.clone();
     url.set_query(Some(&format!("bewit={}", bewit.to_str())));

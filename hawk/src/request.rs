@@ -94,12 +94,10 @@ impl<'a> Request<'a> {
     }
 
     /// Make a "bewit" that can be attached to a URL to authenticate GET access.
-    pub fn make_bewit(&self,
-                      credentials: &Credentials,
-                      ts: time::Timespec,
-                      ttl: Duration)
-                      -> Result<Bewit> {
-        let exp = ts + ttl;
+    ///
+    /// The ttl gives the time for which this bewit is valid, starting now.
+    pub fn make_bewit(&self, credentials: &Credentials, ttl: Duration) -> Result<Bewit> {
+        let exp = time::now().to_timespec() + ttl;
         // note that this includes `method` and `hash` even though they must always be GET and None
         // for bewits.  If they aren't, then the bewit just won't validate -- no need to catch
         // that now
@@ -625,9 +623,7 @@ mod test {
             key: Key::new("tok", &digest::SHA256),
         };
 
-        let bewit = req.make_bewit(&credentials,
-                                   time::now().to_timespec(),
-                                   Duration::minutes(10))
+        let bewit = req.make_bewit(&credentials, Duration::minutes(10))
             .unwrap();
 
         // convert to a string and back
