@@ -236,7 +236,10 @@ impl<'a> Request<'a> {
             return false;
         }
 
-        // TODO: check ts
+        let now = time::now().to_timespec();
+        if bewit.exp < now {
+            return false;
+        }
 
         true
     }
@@ -623,7 +626,7 @@ mod test {
         };
 
         let bewit = req.make_bewit(&credentials,
-                                   Timespec::new(1353832234, 0),
+                                   time::now().to_timespec(),
                                    Duration::minutes(10))
             .unwrap();
 

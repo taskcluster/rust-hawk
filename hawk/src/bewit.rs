@@ -59,7 +59,6 @@ impl FromStr for Bewit {
     fn from_str(bewit: &str) -> Result<Bewit> {
         let bewit = base64::decode(bewit)
             .chain_err(|| "Error decoding bewit base64")?;
-        println!("decoded {:?}", bewit);
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {
@@ -68,18 +67,15 @@ impl FromStr for Bewit {
 
         let id = String::from_utf8(parts[0].to_vec())
             .chain_err(|| "Invalid bewit id")?;
-        println!("id {:?}", id);
 
         let exp = str::from_utf8(parts[1])
             .chain_err(|| "Invalid bewit exp")?;
         let exp = i64::from_str(&exp).chain_err(|| "Invalid bewit exp")?;
         let exp = Timespec::new(exp, 0);
-        println!("exp {:?}", exp);
 
         let mac = str::from_utf8(parts[2])
             .chain_err(|| "Invalid bewit mac")?;
         let mac = Mac::from(base64::decode(mac).chain_err(|| "Invalid bewit mac")?);
-        println!("mac {:?}", mac);
 
         let ext = match parts[3].len() {
             0 => None,
@@ -88,7 +84,6 @@ impl FromStr for Bewit {
                          .chain_err(|| "Invalid bewit ext")?)
             }
         };
-        println!("ext {:?}", ext);
 
         Ok(Bewit {
                id: id,
