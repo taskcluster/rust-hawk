@@ -108,6 +108,9 @@ pub use error::*;
 mod payload;
 pub use payload::PayloadHasher;
 
+mod bewit;
+pub use bewit::Bewit;
+
 pub mod mac;
 
 // convenience imports

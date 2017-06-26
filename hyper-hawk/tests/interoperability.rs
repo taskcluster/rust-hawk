@@ -117,7 +117,7 @@ fn client_with_bewit() {
         .make_bewit(&credentials, ts, time::Duration::minutes(1))
         .unwrap();
     let mut url = url.clone();
-    url.set_query(Some(&format!("bewit={}", bewit)));
+    url.set_query(Some(&format!("bewit={}", bewit.to_str())));
 
     let client = Client::new();
     let mut res = client.get(url.as_str()).send().unwrap();

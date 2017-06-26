@@ -4,15 +4,13 @@ use url::Url;
 use mac::{Mac, MacType};
 use header::Header;
 use response::ResponseBuilder;
+use bewit::Bewit;
 use credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
 use error::*;
 use time::{now, Duration};
 use std::str;
-use std::str::FromStr;
-
-const BACKSLASH: u8 = '\\' as u8;
 
 /// Request represents a single HTTP request.
 ///
@@ -100,7 +98,7 @@ impl<'a> Request<'a> {
                       credentials: &Credentials,
                       ts: time::Timespec,
                       ttl: Duration)
-                      -> Result<String> {
+                      -> Result<Bewit> {
         let exp = ts + ttl;
         // note that this includes `method` and `hash` even though they must always be GET and None
         // for bewits.  If they aren't, then the bewit just won't validate -- no need to catch
@@ -115,16 +113,13 @@ impl<'a> Request<'a> {
                            self.path,
                            self.hash,
                            self.ext)?;
-        let raw = format!("{}\\{}\\{}\\{}",
-                          credentials.id,
-                          exp.sec,
-                          base64::encode(&mac),
-                          match self.ext {
-                              Some(e) => e,
-                              None => "",
-                          });
+        let ext = match self.ext {
+            Some(e) => Some(e.to_string()),
+            None => None,
+        };
 
-        Ok(base64::encode_config(&raw, base64::URL_SAFE_NO_PAD))
+        let bewit = Bewit::new(credentials.id.clone(), exp, mac, ext);
+        Ok(bewit)
     }
 
     /// Validate the given header.  This validates that the `mac` field matches that calculated
@@ -216,60 +211,34 @@ impl<'a> Request<'a> {
     }
 
     /// Validate the given bewit matches this request.
-    pub fn validate_bewit(&self, bewit: &str, key: &Key) -> bool {
-        let inner = || -> Result<bool> {
-            let bewit = base64::decode(bewit)
-                .chain_err(|| "Error decoding bewit")?;
-            println!("decoded {:?}", bewit);
-
-            let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
-            if parts.len() != 4 {
-                return Ok(false);
-            }
-
-            let id = str::from_utf8(parts[0])
-                .chain_err(|| "Invalid bewit id")?;
-            println!("id {:?}", id);
-            let exp = str::from_utf8(parts[1])
-                .chain_err(|| "Invalid bewit exp")?;
-            let exp = i64::from_str(&exp).chain_err(|| "Invalid bewit exp")?;
-            let exp = time::Timespec::new(exp, 0);
-            println!("exp {:?}", exp);
-            let mac = str::from_utf8(parts[2])
-                .chain_err(|| "Invalid bewit mac")?;
-            let mac = Mac::from(base64::decode(mac).chain_err(|| "Invalid bewit mac")?);
-            println!("mac {:?}", mac);
-            let ext = match parts[3].len() {
-                0 => None,
-                _ => {
-                    Some(str::from_utf8(parts[3])
-                             .chain_err(|| "Invalid bewit ext")?)
-                }
-            };
-            println!("ext {:?}", ext);
-
-            let calculated_mac = Mac::new(MacType::Bewit,
-                                          &key,
-                                          exp,
-                                          "",
-                                          self.method,
-                                          self.host,
-                                          self.port,
-                                          self.path,
-                                          self.hash,
-                                          ext)?;
-
-            if mac == calculated_mac {
-                Ok(true)
-            } else {
-                Ok(false)
+    pub fn validate_bewit(&self, bewit: &Bewit, key: &Key) -> bool {
+        let calculated_mac = Mac::new(MacType::Bewit,
+                                      &key,
+                                      bewit.exp,
+                                      "",
+                                      self.method,
+                                      self.host,
+                                      self.port,
+                                      self.path,
+                                      self.hash,
+                                      match bewit.ext {
+                                          Some(ref e) => Some(e),
+                                          None => None,
+                                      });
+        let calculated_mac = match calculated_mac {
+            Ok(m) => m,
+            Err(_) => {
+                return false;
             }
         };
 
-        match inner() {
-            Ok(rv) => rv,
-            Err(_) => false,
+        if bewit.mac != calculated_mac {
+            return false;
         }
+
+        // TODO: check ts
+
+        true
     }
 
     /// Get a Response instance for a response to this request.  This is a convenience
@@ -647,23 +616,7 @@ mod test {
                                      Duration::weeks(52000)));
     }
 
-    #[test]
-    fn test_make_bewit() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
-        };
-        assert_eq!(req.make_bewit(&credentials,
-                                  Timespec::new(1353832234, 0),
-                                  Duration::minutes(10))
-                       .unwrap(),
-                   "bWVcMTM1MzgzMjgzNFxBNDhNYUJvcklxemZjVHZjREJLVVJmV1JoSnRoRDZRbkMwTjFZU0xKRDdvPVw");
-    }
-
-    #[test]
-    fn test_validate_bewit() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
+    fn round_trip_bewit(req: Request) {
         let credentials = Credentials {
             id: "me".to_string(),
             key: Key::new("tok", &digest::SHA256),
@@ -674,7 +627,18 @@ mod test {
                                    Duration::minutes(10))
             .unwrap();
 
+        // convert to a string and back
+        let bewit = bewit.to_str();
+        let bewit = Bewit::from_str(&bewit).unwrap();
+
+        // and validate it maches the original request
         assert!(req.validate_bewit(&bewit, &credentials.key));
+    }
+
+    #[test]
+    fn test_validate_bewit() {
+        let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
+        round_trip_bewit(req);
     }
 
     #[test]
@@ -682,61 +646,6 @@ mod test {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z")
             .ext("abcd")
             .request();
-        let credentials = Credentials {
-            id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
-        };
-
-        let bewit = req.make_bewit(&credentials,
-                                   Timespec::new(1353832234, 0),
-                                   Duration::minutes(10))
-            .unwrap();
-
-        assert!(req.validate_bewit(&bewit, &credentials.key));
-    }
-
-    #[test]
-    fn test_validate_bewit_invalid_base64() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
-        let key = Key::new("tok", &digest::SHA256);
-        assert!(!req.validate_bewit("!/==", &key));
-    }
-
-    #[test]
-    fn test_validate_bewit_invalid_too_many_parts() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
-        let key = Key::new("tok", &digest::SHA256);
-
-        let bewit = base64::encode(&"a\\123\\abc\\ext\\WHUT?".as_bytes());
-        assert!(!req.validate_bewit(&bewit, &key));
-    }
-
-    #[test]
-    fn test_validate_bewit_invalid_too_few_parts() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
-        let key = Key::new("tok", &digest::SHA256);
-
-        let bewit = base64::encode(&"a\\123\\abc".as_bytes());
-        assert!(!req.validate_bewit(&bewit, &key));
-    }
-
-    #[test]
-    fn test_validate_bewit_invalid_not_utf8() {
-        let req = RequestBuilder::new("GET", "foo.com", 443, "/").request();
-        let key = Key::new("tok", &digest::SHA256);
-
-        let a = 'a' as u8;
-        let one = '1' as u8;
-        let slash = '\\' as u8;
-        let invalid1 = 0u8;
-        let invalid2 = 159u8;
-        let bewit = base64::encode(&[invalid1, invalid2, slash, one, slash, a, slash, a]);
-        assert!(!req.validate_bewit(&bewit, &key));
-        let bewit = base64::encode(&[a, slash, invalid1, invalid2, slash, a, slash, a]);
-        assert!(!req.validate_bewit(&bewit, &key));
-        let bewit = base64::encode(&[a, slash, one, slash, invalid1, invalid2, slash, a]);
-        assert!(!req.validate_bewit(&bewit, &key));
-        let bewit = base64::encode(&[a, slash, one, slash, a, slash, invalid1, invalid2]);
-        assert!(!req.validate_bewit(&bewit, &key));
+        round_trip_bewit(req);
     }
 }
