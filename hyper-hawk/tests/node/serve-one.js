@@ -68,13 +68,13 @@ var handler = function (req, res) {
   }
 };
 
-var PORT = parseInt(process.argv[2]);
-var CALLBACK_PORT = parseInt(process.argv[3]);
+var CALLBACK_PORT = parseInt(process.argv[2]);
 
-server = Http.createServer(handler).listen(PORT, '127.0.0.1', function() {
+server = Http.createServer(handler).listen(0, '127.0.0.1', function() {
   // parent process waits for listening to complete by waiting for a tcp
-  // connection on this port
+  // connection on this port, containing the listening TCP port.
   net.createConnection({port: CALLBACK_PORT, host: "127.0.0.1"}, function() {
+    this.write(server.address().port.toString());
     this.end();;
   });
 });

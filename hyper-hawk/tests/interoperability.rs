@@ -12,12 +12,12 @@ use std::path::Path;
 use hyper_hawk::{HawkScheme, ServerAuthorization};
 use hyper::Client;
 use hyper::header;
+use std::str::FromStr;
 use url::Url;
 
-// TODO: send just the callback port, then read the port from the node script
-fn start_node_script(script: &str, port: u16) -> Child {
-    let callback_port = port + 1;
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", callback_port)).unwrap();
+fn start_node_script(script: &str) -> (Child, u16) {
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", 0)).unwrap();
+    let callback_port = listener.local_addr().unwrap().port();
 
     // check for `node_modules' first
     let path = Path::new("tests/node/node_modules");
@@ -27,18 +27,24 @@ fn start_node_script(script: &str, port: u16) -> Child {
 
     let child = Command::new("node")
         .arg(script)
-        .arg(format!("{}", port))
         .arg(format!("{}", callback_port))
         .current_dir("tests/node")
         .spawn()
         .expect("node command failed to start");
 
-    // wait until the process is ready, signalled by a connect to the callback port
+    // wait until the process is ready, signalled by a connect to the callback port, and then
+    // return the port it provides.
     for stream in listener.incoming() {
+        let mut stream = stream.unwrap();
+
+        let mut data: Vec<u8> = vec![];
+        stream.read_to_end(&mut data).unwrap();
+        let port = u16::from_str(std::str::from_utf8(&data).unwrap()).unwrap();
+
         drop(stream);
-        break;
+        return (child, port);
     }
-    child
+    unreachable!();
 }
 
 fn make_credentials() -> Credentials {
@@ -50,8 +56,7 @@ fn make_credentials() -> Credentials {
 
 #[test]
 fn client_with_header() {
-    let port = 65280;
-    let mut child = start_node_script("serve-one.js", port);
+    let (mut child, port) = start_node_script("serve-one.js");
 
     let credentials = make_credentials();
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
@@ -102,8 +107,7 @@ fn client_with_header() {
 
 #[test]
 fn client_with_bewit() {
-    let port = 65290;
-    let mut child = start_node_script("serve-one.js", port);
+    let (mut child, port) = start_node_script("serve-one.js");
 
     let credentials = make_credentials();
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();

@@ -8,7 +8,6 @@ This is a Rust implementation of (Hawk)[https://github.com/hueniverse/hawk] for 
 ### For release
 
 * Support validating nonces via a callback
-* Fix port handling in interoperability tests
 * Test interoperability by verifying bewit
 
 ### Later
