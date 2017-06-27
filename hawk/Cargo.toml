@@ -1,6 +1,6 @@
 [package]
 name = "hawk"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>", "Dustin J. Mitchell <dustin@mozilla.com>"]
 license = "MPL-2.0"
 readme = "README.md"
@@ -14,7 +14,7 @@ pretty_assertions = "^0.1.2"
 
 [dependencies]
 base64 = "~0.6.0"
-ring = "^0.7.3"
+ring = "^0.8.0"
 time = "^0.1.32"
 url = "1.4.0"
 rand = "0.3"
