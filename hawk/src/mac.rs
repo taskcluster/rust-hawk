@@ -119,7 +119,7 @@ mod test {
                            "/v1/api",
                            None,
                            None)
-                .unwrap();
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac.0 ==
                 vec![192, 227, 235, 121, 157, 185, 197, 79, 189, 214, 235, 139, 9, 232, 99, 55,
@@ -140,7 +140,7 @@ mod test {
                            "/v1/api",
                            Some(&hash),
                            None)
-                .unwrap();
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac.0 ==
                 vec![61, 128, 208, 253, 88, 135, 190, 196, 1, 69, 153, 193, 124, 4, 195, 87, 38,
@@ -161,7 +161,7 @@ mod test {
                            "/v1/api",
                            None,
                            Some(&ext))
-                .unwrap();
+            .unwrap();
         println!("got {:?}", mac);
         assert!(mac.0 ==
                 vec![187, 104, 238, 100, 168, 112, 37, 68, 187, 141, 168, 155, 177, 193, 113, 0,

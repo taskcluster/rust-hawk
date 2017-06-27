@@ -149,14 +149,14 @@ impl<'a> ResponseBuilder<'a> {
                                path: &'a str)
                                -> Self {
         ResponseBuilder(Response {
-                            method: method,
-                            host: host,
-                            port: port,
-                            path: path,
-                            req_header: req_header,
-                            hash: None,
-                            ext: None,
-                        })
+            method: method,
+            host: host,
+            port: port,
+            path: path,
+            req_header: req_header,
+            hash: None,
+            ext: None,
+        })
     }
 
     /// Set the content hash for the response.
@@ -199,7 +199,7 @@ mod test {
                     None,
                     None,
                     None)
-                .unwrap()
+            .unwrap()
     }
 
     #[test]
@@ -219,7 +219,7 @@ mod test {
                                         None,
                                         None,
                                         None)
-                .unwrap();
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -242,7 +242,7 @@ mod test {
                                         Some(vec![1, 2, 3, 4]),
                                         None,
                                         None)
-                .unwrap();
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -266,7 +266,7 @@ mod test {
                                         None,
                                         None,
                                         None)
-                .unwrap();
+            .unwrap();
         assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -291,7 +291,7 @@ mod test {
                                         Some(vec![1, 2, 3, 4]),
                                         None,
                                         None)
-                .unwrap();
+            .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
 
         // a different supplied hash won't match..

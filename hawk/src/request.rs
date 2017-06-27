@@ -14,20 +14,21 @@ use std::str;
 
 /// Request represents a single HTTP request.
 ///
-/// The structure is created using the builder idiom. Most uses of this library will hold
-/// several of the fields in this structure fixed. Cloning the structure with these fields
-/// applied is a convenient way to avoid repeating those fields. Most fields are references,
-/// since in common use the values already exist and will outlive the request.
+/// The structure is created using (RequestBuilder)[struct.RequestBuilder.html]. Most uses of this
+/// library will hold several of the fields in this structure fixed. Cloning the structure with
+/// these fields applied is a convenient way to avoid repeating those fields. Most fields are
+/// references, since in common use the values already exist and will outlive the request.
 ///
-/// A request can be used on the client, to generate a header, or on the server, to validate one.
+/// A request can be used on the client, to generate a header or a bewit, or on the server, to
+/// validate the same.
 ///
 /// # Examples
 ///
 /// ```
 /// use hawk::RequestBuilder;
 /// let bldr = RequestBuilder::new("GET", "mysite.com", 443, "/");
-/// let request1 = bldr.clone().method("POST").path("/api/user");
-/// let request2 = bldr.path("/api/users");
+/// let request1 = bldr.clone().method("POST").path("/api/user").request();
+/// let request2 = bldr.path("/api/users").request();
 /// ```
 ///
 /// See the documentation in the crate root for examples of creating and validating headers.
@@ -260,30 +261,30 @@ impl<'a> RequestBuilder<'a> {
     /// Create a new request with the given method, host, port, and path.
     pub fn new(method: &'a str, host: &'a str, port: u16, path: &'a str) -> Self {
         RequestBuilder(Request {
-                           method: method,
-                           host: host,
-                           port: port,
-                           path: path,
-                           hash: None,
-                           ext: None,
-                           app: None,
-                           dlg: None,
-                       })
+            method: method,
+            host: host,
+            port: port,
+            path: path,
+            hash: None,
+            ext: None,
+            app: None,
+            dlg: None,
+        })
     }
 
     /// Create a new request with the host, port, and path determined from the URL.
     pub fn from_url(method: &'a str, url: &'a Url) -> Result<Self> {
         let (host, port, path) = RequestBuilder::parse_url(url)?;
         Ok(RequestBuilder(Request {
-                              method: method,
-                              host: host,
-                              port: port,
-                              path: path,
-                              hash: None,
-                              ext: None,
-                              app: None,
-                              dlg: None,
-                          }))
+            method: method,
+            host: host,
+            port: port,
+            path: path,
+            hash: None,
+            ext: None,
+            app: None,
+            dlg: None,
+        }))
     }
 
     /// Set the request method. This should be a capitalized string.
@@ -549,7 +550,7 @@ mod test {
                     None,
                     None,
                     None)
-                .unwrap()
+            .unwrap()
     }
 
     fn make_header_with_hash() -> Header {
@@ -563,7 +564,7 @@ mod test {
                     Some(vec![1, 2, 3, 4]),
                     None,
                     None)
-                .unwrap()
+            .unwrap()
     }
 
     #[test]

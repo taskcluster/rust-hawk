@@ -11,10 +11,10 @@ use std::borrow::Cow;
 /// These are available using accessor functions.
 #[derive(Clone, Debug)]
 pub struct Bewit<'a> {
-    pub id: Cow<'a, str>,
-    pub exp: Timespec,
-    pub mac: Cow<'a, Mac>,
-    pub ext: Option<Cow<'a, str>>,
+    id: Cow<'a, str>,
+    exp: Timespec,
+    mac: Cow<'a, Mac>,
+    ext: Option<Cow<'a, str>>,
 }
 
 impl<'a> Bewit<'a> {
@@ -76,24 +76,20 @@ const BACKSLASH: u8 = '\\' as u8;
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
     fn from_str(bewit: &str) -> Result<Bewit<'a>> {
-        let bewit = base64::decode(bewit)
-            .chain_err(|| "Error decoding bewit base64")?;
+        let bewit = base64::decode(bewit).chain_err(|| "Error decoding bewit base64")?;
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {
             bail!("Invalid bewit format");
         }
 
-        let id = String::from_utf8(parts[0].to_vec())
-            .chain_err(|| "Invalid bewit id")?;
+        let id = String::from_utf8(parts[0].to_vec()).chain_err(|| "Invalid bewit id")?;
 
-        let exp = str::from_utf8(parts[1])
-            .chain_err(|| "Invalid bewit exp")?;
+        let exp = str::from_utf8(parts[1]).chain_err(|| "Invalid bewit exp")?;
         let exp = i64::from_str(&exp).chain_err(|| "Invalid bewit exp")?;
         let exp = Timespec::new(exp, 0);
 
-        let mac = str::from_utf8(parts[2])
-            .chain_err(|| "Invalid bewit mac")?;
+        let mac = str::from_utf8(parts[2]).chain_err(|| "Invalid bewit mac")?;
         let mac = Mac::from(base64::decode(mac).chain_err(|| "Invalid bewit mac")?);
 
         let ext = match parts[3].len() {
@@ -105,11 +101,11 @@ impl<'a> FromStr for Bewit<'a> {
         };
 
         Ok(Bewit {
-               id: Cow::Owned(id),
-               exp: exp,
-               mac: Cow::Owned(mac),
-               ext: ext,
-           })
+            id: Cow::Owned(id),
+            exp: exp,
+            mac: Cow::Owned(mac),
+            ext: ext,
+        })
     }
 }
 
@@ -136,7 +132,7 @@ mod test {
                  "/v1/api",
                  None,
                  None)
-                .unwrap()
+            .unwrap()
     }
 
     #[test]

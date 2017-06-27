@@ -1,4 +1,4 @@
-//! The `hawk` crate provides support for (Hawk)[https://github.com/hueniverse/hawk]
+//! The `hawk` crate provides support for [Hawk](https://github.com/hueniverse/hawk)
 //! authentictation. It is a low-level crate, used by higher-level crates to integrate with various
 //! Rust HTTP libraries.  For example `hyper-hawk` integrates Hawk with Hyper.
 //!
@@ -30,8 +30,8 @@
 //!         .hash(&payload_hash[..])
 //!         .request();
 //!
-//!     // Get the resulting header, including the calculated MAC; this involves a random nonce,
-//!     // so the MAC will be different on every request.
+//!     // Get the resulting header, including the calculated MAC; this involves a random
+//!     // nonce, so the MAC will be different on every request.
 //!     let header = request.make_header(&credentials).unwrap();
 //!
 //!     // the header would the be attached to the request
@@ -54,13 +54,14 @@
 //! use hawk::mac::Mac;
 //!
 //! fn main() {
+//!    let mac = Mac::from(vec![7, 22, 226, 240, 84, 78, 49, 75, 115, 144, 70,
+//!                             106, 102, 134, 144, 128, 225, 239, 95, 132, 202,
+//!                             154, 213, 118, 19, 63, 183, 108, 215, 134, 118, 115]);
 //!    // get the header (usually from the received request; constructed directly here)
 //!    let hdr = Header::new(Some("dh37fgj492je"),
 //!                          Some(time::Timespec::new(1353832234, 0)),
 //!                          Some("j4h3g2"),
-//!                          Some(Mac::from(vec![7, 22, 226, 240, 84, 78, 49, 75, 115, 144, 70,
-//!                                              106, 102, 134, 144, 128, 225, 239, 95, 132, 202,
-//!                                              154, 213, 118, 19, 63, 183, 108, 215, 134, 118, 115])),
+//!                          Some(mac),
 //!                          Some("my-ext-value"),
 //!                          Some(vec![1, 2, 3, 4]),
 //!                          Some("my-app"),
