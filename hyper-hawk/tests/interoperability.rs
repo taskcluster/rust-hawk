@@ -15,7 +15,7 @@ use hyper::header;
 use std::str::FromStr;
 use url::Url;
 
-fn start_node_script(script: &str) -> (Child, u16) {
+fn start_node_server() -> (Child, u16) {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", 0)).unwrap();
     let callback_port = listener.local_addr().unwrap().port();
 
@@ -26,7 +26,7 @@ fn start_node_script(script: &str) -> (Child, u16) {
     }
 
     let child = Command::new("node")
-        .arg(script)
+        .arg("serve-one.js")
         .arg(format!("{}", callback_port))
         .current_dir("tests/node")
         .spawn()
@@ -56,7 +56,7 @@ fn make_credentials() -> Credentials {
 
 #[test]
 fn client_with_header() {
-    let (mut child, port) = start_node_script("serve-one.js");
+    let (mut child, port) = start_node_server();
 
     let credentials = make_credentials();
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
@@ -107,7 +107,7 @@ fn client_with_header() {
 
 #[test]
 fn client_with_bewit() {
-    let (mut child, port) = start_node_script("serve-one.js");
+    let (mut child, port) = start_node_server();
 
     let credentials = make_credentials();
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
