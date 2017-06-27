@@ -96,7 +96,7 @@ impl<'a> Request<'a> {
     /// Make a "bewit" that can be attached to a URL to authenticate GET access.
     ///
     /// The ttl gives the time for which this bewit is valid, starting now.
-    pub fn make_bewit(&self, credentials: &Credentials, ttl: Duration) -> Result<Bewit> {
+    pub fn make_bewit(&self, credentials: &'a Credentials, ttl: Duration) -> Result<Bewit<'a>> {
         let exp = time::now().to_timespec() + ttl;
         // note that this includes `method` and `hash` even though they must always be GET and None
         // for bewits.  If they aren't, then the bewit just won't validate -- no need to catch
@@ -111,12 +111,7 @@ impl<'a> Request<'a> {
                            self.path,
                            self.hash,
                            self.ext)?;
-        let ext = match self.ext {
-            Some(e) => Some(e.to_string()),
-            None => None,
-        };
-
-        let bewit = Bewit::new(credentials.id.clone(), exp, mac, ext);
+        let bewit = Bewit::new(&credentials.id, exp, mac, self.ext);
         Ok(bewit)
     }
 
@@ -209,17 +204,22 @@ impl<'a> Request<'a> {
     }
 
     /// Validate the given bewit matches this request.
+    ///
+    /// It is up to the caller to consult the Bewit's `id` and look up the
+    /// corresponding key.
+    ///
+    /// Nonces and hashes do not apply when using bewits.
     pub fn validate_bewit(&self, bewit: &Bewit, key: &Key) -> bool {
         let calculated_mac = Mac::new(MacType::Bewit,
                                       &key,
-                                      bewit.exp,
+                                      bewit.exp(),
                                       "",
                                       self.method,
                                       self.host,
                                       self.port,
                                       self.path,
                                       self.hash,
-                                      match bewit.ext {
+                                      match bewit.ext() {
                                           Some(ref e) => Some(e),
                                           None => None,
                                       });
@@ -230,12 +230,12 @@ impl<'a> Request<'a> {
             }
         };
 
-        if bewit.mac != calculated_mac {
+        if bewit.mac() != &calculated_mac {
             return false;
         }
 
         let now = time::now().to_timespec();
-        if bewit.exp < now {
+        if bewit.exp() < now {
             return false;
         }
 
@@ -617,27 +617,26 @@ mod test {
                                      Duration::weeks(52000)));
     }
 
-    fn round_trip_bewit(req: Request) {
+    fn round_trip_bewit(req: Request, duration: Duration, expected: bool) {
         let credentials = Credentials {
             id: "me".to_string(),
             key: Key::new("tok", &digest::SHA256),
         };
 
-        let bewit = req.make_bewit(&credentials, Duration::minutes(10))
-            .unwrap();
+        let bewit = req.make_bewit(&credentials, duration).unwrap();
 
         // convert to a string and back
         let bewit = bewit.to_str();
         let bewit = Bewit::from_str(&bewit).unwrap();
 
         // and validate it maches the original request
-        assert!(req.validate_bewit(&bewit, &credentials.key));
+        assert_eq!(req.validate_bewit(&bewit, &credentials.key), expected);
     }
 
     #[test]
     fn test_validate_bewit() {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
-        round_trip_bewit(req);
+        round_trip_bewit(req, Duration::minutes(10), true);
     }
 
     #[test]
@@ -645,6 +644,12 @@ mod test {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z")
             .ext("abcd")
             .request();
-        round_trip_bewit(req);
+        round_trip_bewit(req, Duration::minutes(10), true);
+    }
+
+    #[test]
+    fn test_validate_bewit_expired() {
+        let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
+        round_trip_bewit(req, Duration::minutes(-10), false);
     }
 }
