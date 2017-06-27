@@ -1,4 +1,3 @@
-
 error_chain! {
     errors {
         HeaderParseError {
