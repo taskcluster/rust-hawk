@@ -5,8 +5,8 @@ authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>", "Dustin J. Mitchell <dus
 license = "MPL-2.0"
 readme = "README.md"
 repository = "https://github.com/taskcluster/rust-hawk"
-documentation = "https://github.com/taskcluster/rust-hawk"
-homepage = "https://github.com/taskcluster/rust-hawk"
+documentation = "https://docs.rs/hawk/"
+homepage = "https://docs.rs/hawk/"
 description = "Hawk Implementation for Rust"
 
 [dev-dependencies]
