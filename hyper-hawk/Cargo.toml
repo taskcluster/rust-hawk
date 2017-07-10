@@ -9,6 +9,10 @@ documentation = "https://github.com/taskcluster/rust-hawk"
 homepage = "https://github.com/taskcluster/rust-hawk"
 description = "Hawk Implementation for rust using Hyper"
 
+[features]
+# skip the tests that require node
+no-interoperability = []
+
 [dependencies]
 url = "1.4.0"
 hyper = "^0.10.11"

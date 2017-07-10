@@ -22,7 +22,8 @@ fn start_node_server() -> (Child, u16) {
     // check for `node_modules' first
     let path = Path::new("tests/node/node_modules");
     if !path.is_dir() {
-        panic!("Run `yarn` or `npm install` in tests/node");
+        panic!("Run `yarn` or `npm install` in tests/node, or test with --feautures \
+                no-interoperability");
     }
 
     let child = Command::new("node")
@@ -54,6 +55,7 @@ fn make_credentials() -> Credentials {
     }
 }
 
+#[cfg_attr(feature = "no-interoperability", ignore)]
 #[test]
 fn client_with_header() {
     let (mut child, port) = start_node_server();
@@ -74,8 +76,7 @@ fn client_with_header() {
     headers.set(header::ContentType::plaintext());
 
     let client = Client::new();
-    let mut res = client
-        .post(url.as_str())
+    let mut res = client.post(url.as_str())
         .headers(headers)
         .body(body)
         .send()
@@ -90,8 +91,7 @@ fn client_with_header() {
     {
         let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
         let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
-        let response = request
-            .make_response_builder(&header)
+        let response = request.make_response_builder(&header)
             .hash(&payload_hash[..])
             .response();
         if !response.validate_header(&server_hdr, &credentials.key) {
@@ -105,6 +105,7 @@ fn client_with_header() {
     child.wait().expect("Failure waiting for child");
 }
 
+#[cfg_attr(feature = "no-interoperability", ignore)]
 #[test]
 fn client_with_bewit() {
     let (mut child, port) = start_node_server();
@@ -116,8 +117,7 @@ fn client_with_bewit() {
         .ext("ext-content")
         .request();
 
-    let bewit = request
-        .make_bewit(&credentials, time::Duration::minutes(1))
+    let bewit = request.make_bewit(&credentials, time::Duration::minutes(1))
         .unwrap();
     let mut url = url.clone();
     url.set_query(Some(&format!("bewit={}", bewit.to_str())));
