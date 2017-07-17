@@ -12,18 +12,19 @@ tasks:
           - pull_request.synchronize
     payload:
       maxRunTime: 3600
-      image: jimmycuadra/rust
+      image: djmitche/rust-hawk-test:latest
       command:
         - /bin/bash
-        - '--login'
         - '-c'
         - >-
           git clone {{event.head.repo.url}} repo &&
           cd repo &&
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
+          echo $PATH &&
           ( cd hawk && cargo test ) &&
-          ( cd hyper-hawk && cargo test --features no-interoperability )
+          ( cd hyper-hawk/tests/node && npm install ) &&
+          ( cd hyper-hawk && cargo test )
     metadata:
       name: Tests
       description: Run `cargo test`
