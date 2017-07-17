@@ -1,0 +1,33 @@
+version: 0
+allowPullRequests: public
+tasks:
+  - provisionerId: '{{ taskcluster.docker.provisionerId }}'
+    workerType: '{{ taskcluster.docker.workerType }}'
+    extra:
+      github:
+        events:
+          - pull_request.opened
+          - pull_request.reopened
+          - push
+          - pull_request.synchronize
+    payload:
+      maxRunTime: 3600
+      image: djmitche/rust-hawk-test:latest
+      command:
+        - /bin/bash
+        - '-c'
+        - >-
+          git clone {{event.head.repo.url}} repo &&
+          cd repo &&
+          git config advice.detachedHead false &&
+          git checkout {{event.head.sha}} &&
+          echo $PATH &&
+          ( cd hawk && cargo test ) &&
+          ( cd hyper-hawk/tests/node && npm install ) &&
+          ( cd hyper-hawk && cargo test )
+    metadata:
+      name: Tests
+      description: Run `cargo test`
+      owner: '{{ event.head.user.email }}'
+      source: '{{ event.head.repo.url }}'
+
