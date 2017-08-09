@@ -191,14 +191,9 @@ impl<'a> Request<'a> {
 
         // ..then the timestamp
         let now = now().to_timespec();
-        if now > ts {
-            if now - ts > ts_skew {
-                return false;
-            }
-        } else {
-            if ts - now > ts_skew {
-                return false;
-            }
+        let skew = if now > ts { now - ts } else { ts - now };
+        if skew > ts_skew {
+            return false;
         }
 
         true
@@ -212,7 +207,7 @@ impl<'a> Request<'a> {
     /// Nonces and hashes do not apply when using bewits.
     pub fn validate_bewit(&self, bewit: &Bewit, key: &Key) -> bool {
         let calculated_mac = Mac::new(MacType::Bewit,
-                                      &key,
+                                      key,
                                       bewit.exp(),
                                       "",
                                       self.method,
@@ -221,7 +216,7 @@ impl<'a> Request<'a> {
                                       self.path,
                                       self.hash,
                                       match bewit.ext() {
-                                          Some(ref e) => Some(e),
+                                          Some(e) => Some(e),
                                           None => None,
                                       });
         let calculated_mac = match calculated_mac {
@@ -348,9 +343,9 @@ impl<'a> RequestBuilder<'a> {
 
     fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str)> {
         let host = url.host_str()
-            .ok_or(format!("url {} has no host", url))?;
+            .ok_or_else(|| format!("url {} has no host", url))?;
         let port = url.port_or_known_default()
-            .ok_or(format!("url {} has no port", url))?;
+            .ok_or_else(|| format!("url {} has no port", url))?;
         let path = url.path();
         Ok((host, port, path))
     }

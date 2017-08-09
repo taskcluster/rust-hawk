@@ -48,18 +48,18 @@ impl Mac {
         write!(buffer, "{}\n", host)?;
         write!(buffer, "{}\n", port)?;
 
-        if let Some(ref h) = hash {
+        if let Some(h) = hash {
             write!(buffer, "{}\n", base64::encode(h))?;
         } else {
             write!(buffer, "\n")?;
         }
 
         match ext {
-            Some(ref e) => write!(buffer, "{}\n", e)?,
+            Some(e) => write!(buffer, "{}\n", e)?,
             None => write!(buffer, "\n")?,
         };
 
-        return Ok(Mac(key.sign(buffer.as_ref())));
+        Ok(Mac(key.sign(buffer.as_ref())))
     }
 }
 

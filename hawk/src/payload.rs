@@ -11,7 +11,7 @@ impl PayloadHasher {
     /// Create a new PayloadHasher. The `content_type` should be lower-case and should
     /// not include parameters. The digest is assumed to be the same as the digest used
     /// for the credentials in the request.
-    pub fn new<'a, B>(content_type: B, algorithm: &'static digest::Algorithm) -> Self
+    pub fn new<B>(content_type: B, algorithm: &'static digest::Algorithm) -> Self
         where B: AsRef<[u8]>
     {
         let mut hasher = PayloadHasher {
@@ -25,10 +25,10 @@ impl PayloadHasher {
     }
 
     /// Hash a single value and return it
-    pub fn hash<'a, B1, B2>(content_type: B1,
-                            algorithm: &'static digest::Algorithm,
-                            payload: B2)
-                            -> Vec<u8>
+    pub fn hash<B1, B2>(content_type: B1,
+                        algorithm: &'static digest::Algorithm,
+                        payload: B2)
+                        -> Vec<u8>
         where B1: AsRef<[u8]>,
               B2: AsRef<[u8]>
     {
@@ -38,7 +38,7 @@ impl PayloadHasher {
     }
 
     /// Update the hash with new data.
-    pub fn update<'a, B>(&mut self, data: B)
+    pub fn update<B>(&mut self, data: B)
         where B: AsRef<[u8]>
     {
         self.context.update(data.as_ref());
@@ -52,7 +52,7 @@ impl PayloadHasher {
         let digest = self.context.finish();
         let mut rv = vec![0; self.algorithm.output_len];
         rv.clone_from_slice(digest.as_ref());
-        return rv;
+        rv
     }
 }
 

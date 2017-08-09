@@ -8,7 +8,7 @@ use error::*;
 /// The structure is created from a request and then used to either create (server) or validate
 /// (client) a `Server-Authentication` header.
 ///
-/// Like `Request`, Responses are built with ResponseBuilders.
+/// Like `Request`, Responses are built with `ResponseBuilders`.
 ///
 /// # Examples
 ///

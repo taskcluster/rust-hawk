@@ -58,7 +58,7 @@ impl Header {
     {
         if let Some(value) = value {
             let value = value.into();
-            if value.contains("\"") {
+            if value.contains('\"') {
                 bail!("Hawk headers cannot contain `\\`");
             }
             Ok(Some(value))
@@ -128,27 +128,25 @@ impl FromStr for Header {
         let mut app: Option<&str> = None;
         let mut dlg: Option<&str> = None;
 
-        while p.len() > 0 {
+        while !p.is_empty() {
             // Skip whitespace and commas used as separators
-            p = p.trim_left_matches(|c| {
-                return c == ',' || char::is_whitespace(c);
-            });
+            p = p.trim_left_matches(|c| c == ',' || char::is_whitespace(c));
             // Find first '=' which delimits attribute name from value
-            match p.find("=") {
+            match p.find('=') {
                 Some(v) => {
                     let attr = &p[..v].trim();
                     if p.len() < v + 1 {
                         bail!(ErrorKind::HeaderParseError);
                     }
                     p = (&p[v + 1..]).trim_left();
-                    if !p.starts_with("\"") {
+                    if !p.starts_with('\"') {
                         bail!(ErrorKind::HeaderParseError);
                     }
                     p = &p[1..];
                     // We have poor RFC 7235 compliance here as we ought to support backslash
                     // escaped characters, but hawk doesn't allow this we won't either.  All
                     // strings must be surrounded by ".." and contain no such characters.
-                    let end = p.find("\"");
+                    let end = p.find('\"');
                     match end {
                         Some(v) => {
                             let val = &p[..v];
@@ -177,7 +175,7 @@ impl FromStr for Header {
                             if p.len() < v + 1 {
                                 break;
                             }
-                            p = &p[v + 1..].trim_left();
+                            p = p[v + 1..].trim_left();
                         }
                         None => bail!(ErrorKind::HeaderParseError),
                     }

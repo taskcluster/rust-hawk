@@ -18,7 +18,7 @@ impl Key {
         let digest = hmac::sign(&self.0, data);
         let mut mac = vec![0; self.0.digest_algorithm().output_len];
         mac.clone_from_slice(digest.as_ref());
-        return mac;
+        mac
     }
 }
 

@@ -71,7 +71,7 @@ impl<'a> Bewit<'a> {
     }
 }
 
-const BACKSLASH: u8 = '\\' as u8;
+const BACKSLASH: u8 = b'\\';
 
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
@@ -86,7 +86,7 @@ impl<'a> FromStr for Bewit<'a> {
         let id = String::from_utf8(parts[0].to_vec()).chain_err(|| "Invalid bewit id")?;
 
         let exp = str::from_utf8(parts[1]).chain_err(|| "Invalid bewit exp")?;
-        let exp = i64::from_str(&exp).chain_err(|| "Invalid bewit exp")?;
+        let exp = i64::from_str(exp).chain_err(|| "Invalid bewit exp")?;
         let exp = Timespec::new(exp, 0);
 
         let mac = str::from_utf8(parts[2]).chain_err(|| "Invalid bewit mac")?;
