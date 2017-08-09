@@ -34,7 +34,9 @@ fn start_node_server() -> (Child, u16) {
         .expect("node command failed to start");
 
     // wait until the process is ready, signalled by a connect to the callback port, and then
-    // return the port it provides.
+    // return the port it provides. We know this will only get one connection, but iteration
+    // is easier anyway
+    #[allow(never_loop)]
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
 
@@ -64,7 +66,7 @@ fn client_with_header() {
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
     let body = "foo=bar";
 
-    let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+    let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
     let request = RequestBuilder::from_url("POST", &url)
         .unwrap()
         .hash(&payload_hash[..])
@@ -84,17 +86,17 @@ fn client_with_header() {
 
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
-    assert!(res.status == hyper::Ok);
-    assert!(body == "Hello Steve ext-content");
+    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(body, "Hello Steve ext-content");
 
     // validate server's signature
     {
         let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
-        let payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
         let response = request.make_response_builder(&header)
             .hash(&payload_hash[..])
             .response();
-        if !response.validate_header(&server_hdr, &credentials.key) {
+        if !response.validate_header(server_hdr, &credentials.key) {
             panic!("authentication of response header failed");
         }
     }
@@ -127,8 +129,8 @@ fn client_with_bewit() {
 
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
-    assert!(res.status == hyper::Ok);
-    assert!(body == "Hello Steve ext-content");
+    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(body, "Hello Steve ext-content");
 
     drop(res);
     drop(client); // close the kept-alive connection

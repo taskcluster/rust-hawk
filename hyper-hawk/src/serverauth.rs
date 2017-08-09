@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// This header appears to behave identically to the standard `Authorization` header,
 /// so its implementation defers to that one and it functions identically. It can support
-/// any Hyper scheme, although it is typically only used with the HawkScheme.
+/// any Hyper scheme, although it is typically only used with the `HawkScheme`.
 #[derive(Clone, PartialEq, Debug)]
 pub struct ServerAuthorization<S: Scheme>(pub S);
 

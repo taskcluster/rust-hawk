@@ -4,9 +4,9 @@ use std::fmt;
 use hawk::Header;
 use std::ops::Deref;
 
-/// HawkScheme is a Hyper Scheme implementation for Hawk Authorization headers.
+/// `HawkScheme` is a Hyper Scheme implementation for Hawk Authorization headers.
 ///
-/// The HawkScheme type dereferences to a Hawk Header, allowing access to all members and methods of
+/// The `HawkScheme` type dereferences to a Hawk Header, allowing access to all members and methods of
 /// that type.
 #[derive(Clone, PartialEq, Debug)]
 pub struct HawkScheme(pub Header);

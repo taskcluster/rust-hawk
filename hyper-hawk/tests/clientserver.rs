@@ -28,7 +28,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     req_builder = req_builder.port(9999);
 
     if send_hash {
-        payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
         req_builder = req_builder.hash(&payload_hash[..]);
     }
     let request = req_builder.request();
@@ -38,8 +38,7 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     headers.set(header::Authorization(HawkScheme(header.clone())));
 
     let client = Client::new();
-    let mut res = client
-        .post(url.as_str())
+    let mut res = client.post(url.as_str())
         .headers(headers)
         .body(body)
         .send()
@@ -63,13 +62,12 @@ fn client(send_hash: bool, require_hash: bool, port: u16) {
     let payload_hash;
     let mut resp_builder = request.make_response_builder(&header);
     if require_hash {
-        payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+        payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
         resp_builder = resp_builder.hash(&payload_hash[..]);
     }
 
-    if !resp_builder
-            .response()
-            .validate_header(&server_hdr, &credentials.key) {
+    if !resp_builder.response()
+        .validate_header(server_hdr, &credentials.key) {
         panic!("authentication of response header failed");
     }
 }
@@ -94,7 +92,7 @@ impl server::Handler for TestHandler {
 
         // add a body hash, if we require such a thing
         if self.require_hash {
-            payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body.as_bytes());
+            payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
             req_builder = req_builder.hash(&payload_hash[..]);
         }
 
@@ -103,15 +101,15 @@ impl server::Handler for TestHandler {
         assert_eq!(hdr.id, Some("test-client".to_string()));
         assert_eq!(hdr.ext, None);
         let key = Key::new(vec![1u8; 32], &SHA256);
-        if !request.validate_header(&hdr, &key, time::Duration::minutes(1)) {
+        if !request.validate_header(hdr, &key, time::Duration::minutes(1)) {
             panic!("header validation failed");
         }
 
-        let body = "OK".as_bytes();
+        let body = b"OK";
         let payload_hash;
-        let mut resp_builder = request.make_response_builder(&hdr).ext("server-ext");
+        let mut resp_builder = request.make_response_builder(hdr).ext("server-ext");
         if self.send_hash {
-            payload_hash = PayloadHasher::hash("text/plain".as_bytes(), &SHA256, body);
+            payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body);
             resp_builder = resp_builder.hash(&payload_hash[..]);
         }
         let server_hdr = resp_builder.response().make_header(&key).unwrap();
@@ -137,17 +135,16 @@ fn run_client_server(client_send_hash: bool,
     let mut server = server::Server::http(("127.0.0.1", 0)).unwrap();
     let local_address = server.local_addr().unwrap();
     let mut listening = server.handle_threads(handler, 1).unwrap();
-    let client_thread =
-        thread::spawn(move || {
-                          client(client_send_hash, client_require_hash, local_address.port());
-                      });
+    let client_thread = thread::spawn(move || {
+        client(client_send_hash, client_require_hash, local_address.port());
+    });
 
     // finish both threads
     let client_res = client_thread.join();
     listening.close().unwrap();
 
     // *then* evaluate client_res
-    if let Err(_) = client_res {
+    if client_res.is_err() {
         panic!("client failed");
     }
 }
