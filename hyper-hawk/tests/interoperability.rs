@@ -36,7 +36,7 @@ fn start_node_server() -> (Child, u16) {
     // wait until the process is ready, signalled by a connect to the callback port, and then
     // return the port it provides. We know this will only get one connection, but iteration
     // is easier anyway
-    #[allow(never_loop)]
+    #[cfg_attr(feature = "cargo-clippy", allow(never_loop))]
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
 
