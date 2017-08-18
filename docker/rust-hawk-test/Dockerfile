@@ -1,6 +1,13 @@
-FROM jimmycuadra/rust
+FROM debian
+
+# based on https://hub.docker.com/r/jimmycuadra/rust/~/dockerfile/
 MAINTAINER Dustin J. Mitchell <dustin@mozilla.com>
 
-# instlal node in /usr/bin/
-RUN apt-get update && apt-get install -y curl
-RUN curl https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz | xz -d | tar -C /usr --strip=1 -xf -
+ENV USER root
+
+ADD setup.sh /setup.sh
+RUN /bin/bash /setup.sh
+
+ENV PATH $PATH:/root/.cargo/bin
+WORKDIR /source
+CMD ["/bin/bash"]
