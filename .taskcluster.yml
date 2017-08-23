@@ -12,7 +12,7 @@ tasks:
           - pull_request.synchronize
     payload:
       maxRunTime: 3600
-      image: djmitche/rust-hawk-test:latest
+      image: djmitche/rust-hawk-test:2.0.0
       command:
         - /bin/bash
         - '-c'
@@ -22,9 +22,15 @@ tasks:
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
           echo $PATH &&
-          ( cd hawk && cargo test ) &&
+          ( cd hawk &&
+            rustup run stable cargo test &&
+            rustup run nightly cargo test &&
+           rustup run nightly cargo clippy -- -D clippy) | cat &&
           ( cd hyper-hawk/tests/node && npm install ) &&
-          ( cd hyper-hawk && cargo test )
+          ( cd hyper-hawk &&
+            rustup run stable cargo test &&
+            rustup run nightly cargo test &&
+            rustup run nightly cargo clippy -- -D clippy) | cat
     metadata:
       name: Tests
       description: Run `cargo test`
