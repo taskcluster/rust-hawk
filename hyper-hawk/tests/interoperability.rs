@@ -3,6 +3,8 @@ extern crate hawk;
 extern crate hyper;
 extern crate hyper_hawk;
 extern crate url;
+extern crate futures;
+extern crate tokio_core;
 
 use std::process::{Command, Child};
 use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
@@ -10,10 +12,11 @@ use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
 use hyper_hawk::{HawkScheme, ServerAuthorization};
-use hyper::Client;
-use hyper::header;
+use hyper::{Client, Request, Method, header};
 use std::str::FromStr;
 use url::Url;
+use futures::{Future, Stream};
+use tokio_core::reactor::Core;
 
 fn start_node_server() -> (Child, u16) {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", 0)).unwrap();
@@ -66,43 +69,55 @@ fn client_with_header() {
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
     let body = "foo=bar";
 
+    // build a hawk::Request
     let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
-    let request = RequestBuilder::from_url("POST", &url)
+    let hawk_req = RequestBuilder::from_url("POST", &url)
         .unwrap()
         .hash(&payload_hash[..])
         .ext("ext-content")
         .request();
-    let mut headers = hyper::header::Headers::new();
-    let header = request.make_header(&credentials).unwrap();
-    headers.set(header::Authorization(HawkScheme(header.clone())));
-    headers.set(header::ContentType::plaintext());
 
-    let client = Client::new();
-    let mut res = client.post(url.as_str())
-        .headers(headers)
-        .body(body)
-        .send()
-        .unwrap();
+    // build a hyper::Request
+    let mut req = Request::new(Method::Post, url.as_str().parse().unwrap());
+    let req_header = hawk_req.make_header(&credentials).unwrap();
+    req.headers_mut().set(header::Authorization(HawkScheme(req_header.clone())));
+    req.headers_mut().set(header::ContentType::plaintext());
+    req.set_body(body);
+    println!("{:?}", req);
 
-    let mut body = String::new();
-    res.read_to_string(&mut body).unwrap();
-    assert_eq!(res.status, hyper::Ok);
-    assert_eq!(body, "Hello Steve ext-content");
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
 
-    // validate server's signature
-    {
-        let server_hdr: &ServerAuthorization<HawkScheme> = res.headers.get().unwrap();
-        let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
-        let response = request.make_response_builder(&header)
-            .hash(&payload_hash[..])
-            .response();
-        if !response.validate_header(server_hdr, &credentials.key) {
-            panic!("authentication of response header failed");
-        }
-    }
+    let client = Client::new(&handle);
+    let work = client.request(req)
+        .and_then(|res| {
+            assert_eq!(res.status(), hyper::Ok);
+            let server_hdr =
+                res.headers().get::<ServerAuthorization<HawkScheme>>().unwrap().clone();
+            res.body().concat2().map(|body| (body, server_hdr))
+        })
+        .map(|(body, server_hdr)| {
+            // check we got the expected body
+            assert_eq!(body.as_ref(), b"Hello Steve ext-content");
 
-    drop(res);
-    drop(client); // close the kept-alive connection
+            // validate server's signature
+            let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_ref());
+            let response = hawk_req.make_response_builder(&req_header)
+                .hash(&payload_hash[..])
+                .response();
+            if !response.validate_header(&server_hdr, &credentials.key) {
+                panic!("authentication of response header failed");
+            }
+        });
+
+    core.run(work).unwrap();
+
+    // drop everything to allow the client connection to close and thus the Node server
+    // to exit.  Curiously, just dropping client is not sufficient - the core holds the
+    // socket open.
+    drop(client);
+    drop(handle);
+    drop(core);
 
     child.wait().expect("Failure waiting for child");
 }
@@ -114,26 +129,37 @@ fn client_with_bewit() {
 
     let credentials = make_credentials();
     let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
-    let request = RequestBuilder::from_url("GET", &url)
+    let hawk_req = RequestBuilder::from_url("GET", &url)
         .unwrap()
         .ext("ext-content")
         .request();
 
-    let bewit = request.make_bewit(&credentials, time::Duration::minutes(1))
+    let bewit = hawk_req.make_bewit(&credentials, time::Duration::minutes(1))
         .unwrap();
     let mut url = url.clone();
     url.set_query(Some(&format!("bewit={}", bewit.to_str())));
 
-    let client = Client::new();
-    let mut res = client.get(url.as_str()).send().unwrap();
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
 
-    let mut body = String::new();
-    res.read_to_string(&mut body).unwrap();
-    assert_eq!(res.status, hyper::Ok);
-    assert_eq!(body, "Hello Steve ext-content");
+    let client = Client::new(&handle);
+    let work = client.get(url.as_str().parse().unwrap())
+        .and_then(|res| {
+            assert_eq!(res.status(), hyper::Ok);
 
-    drop(res);
-    drop(client); // close the kept-alive connection
+            res.body().concat2().map(|body| {
+                assert_eq!(body.as_ref(), b"Hello Steve ext-content");
+            })
+        });
+
+    core.run(work).unwrap();
+
+    // drop everything to allow the client connection to close and thus the Node server
+    // to exit.  Curiously, just dropping client is not sufficient - the core holds the
+    // socket open.
+    drop(client);
+    drop(handle);
+    drop(core);
 
     child.wait().expect("Failure waiting for child");
 }

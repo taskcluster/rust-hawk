@@ -59,6 +59,8 @@ impl Mac {
             None => write!(buffer, "\n")?,
         };
 
+        println!("{:?}", String::from_utf8(buffer.clone()));
+
         Ok(Mac(key.sign(buffer.as_ref())))
     }
 }
