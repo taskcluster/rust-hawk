@@ -25,11 +25,6 @@ tasks:
           ( cd hawk &&
             rustup run stable cargo test &&
             rustup run nightly cargo test &&
-           rustup run nightly cargo clippy -- -D clippy) | cat &&
-          ( cd hyper-hawk/tests/node && npm install ) &&
-          ( cd hyper-hawk &&
-            rustup run stable cargo test &&
-            rustup run nightly cargo test &&
             rustup run nightly cargo clippy -- -D clippy) | cat
     metadata:
       name: Tests
