@@ -22,10 +22,9 @@ tasks:
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
           echo $PATH &&
-          ( cd hawk &&
-            rustup run stable cargo test &&
-            rustup run nightly cargo test &&
-            rustup run nightly cargo clippy -- -D clippy) | cat
+          rustup run stable cargo test &&
+          rustup run nightly cargo test &&
+          rustup run nightly cargo clippy -- -D clippy
     metadata:
       name: Tests
       description: Run `cargo test`
