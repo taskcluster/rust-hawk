@@ -24,7 +24,7 @@ impl<'a> Bewit<'a> {
     pub fn new(id: &'a str, exp: Timespec, mac: Mac, ext: Option<&'a str>) -> Bewit<'a> {
         Bewit {
             id: Cow::Borrowed(id),
-            exp: exp,
+            exp,
             mac: Cow::Owned(mac),
             ext: match ext {
                 Some(s) => Some(Cow::Borrowed(s)),
@@ -102,9 +102,9 @@ impl<'a> FromStr for Bewit<'a> {
 
         Ok(Bewit {
             id: Cow::Owned(id),
-            exp: exp,
+            exp,
             mac: Cow::Owned(mac),
-            ext: ext,
+            ext,
         })
     }
 }

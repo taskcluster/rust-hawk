@@ -256,10 +256,10 @@ impl<'a> RequestBuilder<'a> {
     /// Create a new request with the given method, host, port, and path.
     pub fn new(method: &'a str, host: &'a str, port: u16, path: &'a str) -> Self {
         RequestBuilder(Request {
-            method: method,
-            host: host,
-            port: port,
-            path: path,
+            method,
+            host,
+            port,
+            path,
             hash: None,
             ext: None,
             app: None,
@@ -271,10 +271,10 @@ impl<'a> RequestBuilder<'a> {
     pub fn from_url(method: &'a str, url: &'a Url) -> Result<Self> {
         let (host, port, path) = RequestBuilder::parse_url(url)?;
         Ok(RequestBuilder(Request {
-            method: method,
-            host: host,
-            port: port,
-            path: path,
+            method,
+            host,
+            port,
+            path,
             hash: None,
             ext: None,
             app: None,
