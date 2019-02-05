@@ -34,29 +34,29 @@ impl Mac {
                -> Result<Mac> {
         let mut buffer: Vec<u8> = vec![];
 
-        write!(buffer,
-               "{}\n",
-               match mac_type {
-                   MacType::Header => "hawk.1.header",
-                   MacType::Response => "hawk.1.response",
-                   MacType::Bewit => "hawk.1.bewit",
-               })?;
-        write!(buffer, "{}\n", ts.sec)?;
-        write!(buffer, "{}\n", nonce)?;
-        write!(buffer, "{}\n", method)?;
-        write!(buffer, "{}\n", path)?;
-        write!(buffer, "{}\n", host)?;
-        write!(buffer, "{}\n", port)?;
+        writeln!(buffer,
+                 "{}",
+                 match mac_type {
+                     MacType::Header => "hawk.1.header",
+                     MacType::Response => "hawk.1.response",
+                     MacType::Bewit => "hawk.1.bewit",
+                 })?;
+        writeln!(buffer, "{}", ts.sec)?;
+        writeln!(buffer, "{}", nonce)?;
+        writeln!(buffer, "{}", method)?;
+        writeln!(buffer, "{}", path)?;
+        writeln!(buffer, "{}", host)?;
+        writeln!(buffer, "{}", port)?;
 
         if let Some(h) = hash {
-            write!(buffer, "{}\n", base64::encode(h))?;
+            writeln!(buffer, "{}", base64::encode(h))?;
         } else {
-            write!(buffer, "\n")?;
+            writeln!(buffer)?;
         }
 
         match ext {
-            Some(e) => write!(buffer, "{}\n", e)?,
-            None => write!(buffer, "\n")?,
+            Some(e) => writeln!(buffer, "{}", e)?,
+            None => writeln!(buffer)?,
         };
 
         Ok(Mac(key.sign(buffer.as_ref())))
@@ -85,10 +85,7 @@ impl Deref for Mac {
 
 impl PartialEq for Mac {
     fn eq(&self, other: &Mac) -> bool {
-        match constant_time::verify_slices_are_equal(&self.0[..], &other.0[..]) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        constant_time::verify_slices_are_equal(&self.0[..], &other.0[..]).is_ok()
     }
 }
 

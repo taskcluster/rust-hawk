@@ -149,11 +149,11 @@ impl<'a> ResponseBuilder<'a> {
                                path: &'a str)
                                -> Self {
         ResponseBuilder(Response {
-            method: method,
-            host: host,
-            port: port,
-            path: path,
-            req_header: req_header,
+            method,
+            host,
+            port,
+            path,
+            req_header,
             hash: None,
             ext: None,
         })

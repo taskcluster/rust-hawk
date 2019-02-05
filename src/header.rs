@@ -42,11 +42,11 @@ impl Header {
     {
         Ok(Header {
             id: Header::check_component(id)?,
-            ts: ts,
+            ts,
             nonce: Header::check_component(nonce)?,
-            mac: mac,
+            mac,
             ext: Header::check_component(ext)?,
-            hash: hash,
+            hash,
             app: Header::check_component(app)?,
             dlg: Header::check_component(dlg)?,
         })
@@ -130,7 +130,7 @@ impl FromStr for Header {
 
         while !p.is_empty() {
             // Skip whitespace and commas used as separators
-            p = p.trim_left_matches(|c| c == ',' || char::is_whitespace(c));
+            p = p.trim_start_matches(|c| c == ',' || char::is_whitespace(c));
             // Find first '=' which delimits attribute name from value
             match p.find('=') {
                 Some(v) => {
@@ -138,7 +138,7 @@ impl FromStr for Header {
                     if p.len() < v + 1 {
                         bail!(ErrorKind::HeaderParseError);
                     }
-                    p = (&p[v + 1..]).trim_left();
+                    p = (&p[v + 1..]).trim_start();
                     if !p.starts_with('\"') {
                         bail!(ErrorKind::HeaderParseError);
                     }
@@ -175,7 +175,7 @@ impl FromStr for Header {
                             if p.len() < v + 1 {
                                 break;
                             }
-                            p = p[v + 1..].trim_left();
+                            p = p[v + 1..].trim_start();
                         }
                         None => bail!(ErrorKind::HeaderParseError),
                     }
@@ -189,7 +189,7 @@ impl FromStr for Header {
                 Some(id) => Some(id.to_string()),
                 None => None,
             },
-            ts: ts,
+            ts,
             nonce: match nonce {
                 Some(nonce) => Some(nonce.to_string()),
                 None => None,
@@ -202,7 +202,7 @@ impl FromStr for Header {
                 Some(ext) => Some(ext.to_string()),
                 None => None,
             },
-            hash: hash,
+            hash,
             app: match app {
                 Some(app) => Some(app.to_string()),
                 None => None,

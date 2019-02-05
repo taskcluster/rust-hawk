@@ -16,7 +16,7 @@ impl PayloadHasher {
     {
         let mut hasher = PayloadHasher {
             context: digest::Context::new(algorithm),
-            algorithm: algorithm,
+            algorithm,
         };
         hasher.update(b"hawk.1.payload\n");
         hasher.update(content_type.as_ref());
