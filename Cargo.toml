@@ -14,7 +14,7 @@ pretty_assertions = "^0.1.2"
 
 [dependencies]
 base64 = "~0.6.0"
-ring = "^0.13.2"
+ring = "^0.14.5"
 time = "^0.1.32"
 url = "1.4.0"
 rand = "0.3"
