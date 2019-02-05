@@ -24,7 +24,7 @@ chmod +x rustup-init
 
 # install nightly + clippy
 /root/.cargo/bin/rustup install nightly
-/root/.cargo/bin/rustup run nightly cargo install clippy
+/root/.cargo/bin/rustup component add --toolchain nightly clippy-preview
 
 # install node
 curl https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz | xz -d | tar -C /usr --strip=1 -xf -
