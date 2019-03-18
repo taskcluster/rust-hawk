@@ -343,9 +343,9 @@ impl<'a> RequestBuilder<'a> {
 
     fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str)> {
         let host = url.host_str()
-            .ok_or_else(|| format!("url {} has no host", url))?;
+            .ok_or_else(|| Error::InvalidUrl(format!("url {} has no host", url)))?;
         let port = url.port_or_known_default()
-            .ok_or_else(|| format!("url {} has no port", url))?;
+            .ok_or_else(|| Error::InvalidUrl(format!("url {} has no port", url)))?;
         let path = url.path();
         Ok((host, port, path))
     }

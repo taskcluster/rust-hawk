@@ -76,27 +76,26 @@ const BACKSLASH: u8 = b'\\';
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
     fn from_str(bewit: &str) -> Result<Bewit<'a>> {
-        let bewit = base64::decode(bewit).chain_err(|| "Error decoding bewit base64")?;
+        let bewit = base64::decode(bewit)?;
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {
-            bail!("Invalid bewit format");
+            return Err(InvalidBewit::Format.into());
         }
 
-        let id = String::from_utf8(parts[0].to_vec()).chain_err(|| "Invalid bewit id")?;
+        let id = String::from_utf8(parts[0].to_vec()).map_err(|_| InvalidBewit::Id)?;
 
-        let exp = str::from_utf8(parts[1]).chain_err(|| "Invalid bewit exp")?;
-        let exp = i64::from_str(exp).chain_err(|| "Invalid bewit exp")?;
+        let exp = str::from_utf8(parts[1]).map_err(|_| InvalidBewit::Exp)?;
+        let exp = i64::from_str(exp).map_err(|_| InvalidBewit::Exp)?;
         let exp = Timespec::new(exp, 0);
 
-        let mac = str::from_utf8(parts[2]).chain_err(|| "Invalid bewit mac")?;
-        let mac = Mac::from(base64::decode(mac).chain_err(|| "Invalid bewit mac")?);
+        let mac = str::from_utf8(parts[2]).map_err(|_| InvalidBewit::Mac)?;
+        let mac = Mac::from(base64::decode(mac).map_err(|_| InvalidBewit::Mac)?);
 
         let ext = match parts[3].len() {
             0 => None,
             _ => {
-                Some(Cow::Owned(String::from_utf8(parts[3].to_vec())
-                                    .chain_err(|| "Invalid bew,it ext")?))
+                Some(Cow::Owned(String::from_utf8(parts[3].to_vec()).map_err(|_| InvalidBewit::Ext)?))
             }
         };
 

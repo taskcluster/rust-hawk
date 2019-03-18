@@ -30,11 +30,11 @@ impl<'a> Response<'a> {
         let mac;
         let ts = self.req_header
             .ts
-            .ok_or("Missing `ts` atttribute in Hawk header")?;
+            .ok_or(Error::MissingTs)?;
         let nonce = self.req_header
             .nonce
             .as_ref()
-            .ok_or("Missing `nonce` attribute in Hawk header")?;
+            .ok_or(Error::MissingNonce)?;
         mac = Mac::new(MacType::Response,
                        key,
                        ts,

@@ -59,7 +59,7 @@ impl Header {
         if let Some(value) = value {
             let value = value.into();
             if value.contains('\"') {
-                bail!("Hawk headers cannot contain `\\`");
+                return Err(Error::HeaderParseError("Hawk headers cannot contain `\\`".into()));
             }
             Ok(Some(value))
         } else {
@@ -132,56 +132,50 @@ impl FromStr for Header {
             // Skip whitespace and commas used as separators
             p = p.trim_start_matches(|c| c == ',' || char::is_whitespace(c));
             // Find first '=' which delimits attribute name from value
-            match p.find('=') {
-                Some(v) => {
-                    let attr = &p[..v].trim();
-                    if p.len() < v + 1 {
-                        bail!(ErrorKind::HeaderParseError);
-                    }
-                    p = (&p[v + 1..]).trim_start();
-                    if !p.starts_with('\"') {
-                        bail!(ErrorKind::HeaderParseError);
-                    }
-                    p = &p[1..];
-                    // We have poor RFC 7235 compliance here as we ought to support backslash
-                    // escaped characters, but hawk doesn't allow this we won't either.  All
-                    // strings must be surrounded by ".." and contain no such characters.
-                    let end = p.find('\"');
-                    match end {
-                        Some(v) => {
-                            let val = &p[..v];
-                            match *attr {
-                                "id" => id = Some(val),
-                                "ts" => {
-                                    let epoch = i64::from_str(val)
-                                        .chain_err(|| "Error parsing `ts` field")?;
-                                    ts = Some(Timespec::new(epoch, 0));
-                                }
-                                "mac" => {
-                                    mac = Some(base64::decode(val)
-                                                   .chain_err(|| "Error parsing `mac` field")?);
-                                }
-                                "nonce" => nonce = Some(val),
-                                "ext" => ext = Some(val),
-                                "hash" => {
-                                    hash = Some(base64::decode(val)
-                                                    .chain_err(|| "Error parsing `hash` field")?);
-                                }
-                                "app" => app = Some(val),
-                                "dlg" => dlg = Some(val),
-                                _ => bail!("Invalid Hawk field {}", *attr),
-                            };
-                            // Break if we are at end of string, otherwise skip separator
-                            if p.len() < v + 1 {
-                                break;
-                            }
-                            p = p[v + 1..].trim_start();
-                        }
-                        None => bail!(ErrorKind::HeaderParseError),
-                    }
+            let assign_end = p.find('=').ok_or_else(||
+                Error::HeaderParseError("Expected '='".into()))?;
+            let attr = &p[..assign_end].trim();
+            if p.len() < assign_end + 1 {
+                return Err(Error::HeaderParseError("Missing right hand side of =".into()));
+            }
+            p = (&p[assign_end + 1..]).trim_start();
+            if !p.starts_with('\"') {
+                return Err(Error::HeaderParseError("Expected opening quote".into()));
+            }
+            p = &p[1..];
+            // We have poor RFC 7235 compliance here as we ought to support backslash
+            // escaped characters, but hawk doesn't allow this we won't either.  All
+            // strings must be surrounded by ".." and contain no such characters.
+            let end = p.find('\"');
+            let val_end = end.ok_or_else(||
+                Error::HeaderParseError("Expected closing quote".into()))?;
+            let val = &p[..val_end];
+            match *attr {
+                "id" => id = Some(val),
+                "ts" => {
+                    let epoch = i64::from_str(val)
+                        .map_err(|_| Error::HeaderParseError("Error parsing `ts` field".into()))?;
+                    ts = Some(Timespec::new(epoch, 0));
                 }
-                None => bail!(ErrorKind::HeaderParseError),
+                "mac" => {
+                    mac = Some(base64::decode(val).map_err(|_|
+                        Error::HeaderParseError("Error parsing `mac` field".into()))?);
+                }
+                "nonce" => nonce = Some(val),
+                "ext" => ext = Some(val),
+                "hash" => {
+                    hash = Some(base64::decode(val).map_err(|_|
+                    Error::HeaderParseError("Error parsing `hash` field".into()))?);
+                }
+                "app" => app = Some(val),
+                "dlg" => dlg = Some(val),
+                _ => return Err(Error::HeaderParseError(format!("Invalid Hawk field {}", *attr))),
             };
+            // Break if we are at end of string, otherwise skip separator
+            if p.len() < val_end + 1 {
+                break;
+            }
+            p = p[val_end + 1..].trim_start();
         }
 
         Ok(Header {

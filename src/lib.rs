@@ -88,9 +88,6 @@ extern crate rand;
 #[macro_use]
 extern crate pretty_assertions;
 
-#[macro_use]
-extern crate error_chain;
-
 mod header;
 pub use crate::header::Header;
 
