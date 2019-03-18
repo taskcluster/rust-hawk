@@ -1,8 +1,8 @@
 use base64;
 use std::fmt;
 use std::str::FromStr;
-use mac::Mac;
-use error::*;
+use crate::mac::Mac;
+use crate::error::*;
 use time::Timespec;
 
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
@@ -220,7 +220,7 @@ mod test {
     use super::Header;
     use time::Timespec;
     use std::str::FromStr;
-    use mac::Mac;
+    use crate::mac::Mac;
 
     #[test]
     fn illegal_id() {

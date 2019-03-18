@@ -1,14 +1,14 @@
 use base64;
 use time;
 use url::Url;
-use mac::{Mac, MacType};
-use header::Header;
-use response::ResponseBuilder;
-use bewit::Bewit;
-use credentials::{Credentials, Key};
+use crate::mac::{Mac, MacType};
+use crate::header::Header;
+use crate::response::ResponseBuilder;
+use crate::bewit::Bewit;
+use crate::credentials::{Credentials, Key};
 use rand;
 use rand::Rng;
-use error::*;
+use crate::error::*;
 use time::{now, Duration};
 use std::str;
 
@@ -364,8 +364,8 @@ fn random_string(bytes: usize) -> String {
 mod test {
     use super::*;
     use time::Timespec;
-    use credentials::{Credentials, Key};
-    use header::Header;
+    use crate::credentials::{Credentials, Key};
+    use crate::header::Header;
     use url::Url;
     use ring::digest;
     use std::str::FromStr;

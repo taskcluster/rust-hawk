@@ -1,7 +1,7 @@
-use mac::{Mac, MacType};
-use header::Header;
-use credentials::Key;
-use error::*;
+use crate::mac::{Mac, MacType};
+use crate::header::Header;
+use crate::credentials::Key;
+use crate::error::*;
 
 /// A Response represents a response from an HTTP server.
 ///
@@ -184,9 +184,9 @@ impl<'a> ResponseBuilder<'a> {
 #[cfg(test)]
 mod test {
     use super::ResponseBuilder;
-    use header::Header;
-    use credentials::Key;
-    use mac::Mac;
+    use crate::header::Header;
+    use crate::credentials::Key;
+    use crate::mac::Mac;
     use time::Timespec;
     use ring::digest;
 

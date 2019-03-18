@@ -1,9 +1,9 @@
-use credentials::Key;
+use crate::credentials::Key;
 use base64;
 use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
-use error::*;
+use crate::error::*;
 use time;
 
 /// The kind of MAC calcuation (corresponding to the first line of the message)
@@ -94,7 +94,7 @@ impl PartialEq for Mac {
 mod test {
     use super::{Mac, MacType};
     use time::Timespec;
-    use credentials::Key;
+    use crate::credentials::Key;
     use ring::digest;
 
     fn key() -> Key {

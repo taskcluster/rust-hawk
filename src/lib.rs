@@ -92,25 +92,25 @@ extern crate pretty_assertions;
 extern crate error_chain;
 
 mod header;
-pub use header::Header;
+pub use crate::header::Header;
 
 mod credentials;
-pub use credentials::{Credentials, Key};
+pub use crate::credentials::{Credentials, Key};
 
 mod request;
-pub use request::{Request, RequestBuilder};
+pub use crate::request::{Request, RequestBuilder};
 
 mod response;
-pub use response::{Response, ResponseBuilder};
+pub use crate::response::{Response, ResponseBuilder};
 
 mod error;
-pub use error::*;
+pub use crate::error::*;
 
 mod payload;
-pub use payload::PayloadHasher;
+pub use crate::payload::PayloadHasher;
 
 mod bewit;
-pub use bewit::Bewit;
+pub use crate::bewit::Bewit;
 
 pub mod mac;
 

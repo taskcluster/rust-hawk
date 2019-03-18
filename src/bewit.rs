@@ -1,6 +1,6 @@
 use base64;
-use mac::Mac;
-use error::*;
+use crate::mac::Mac;
+use crate::error::*;
 use std::str;
 use std::str::FromStr;
 use time::Timespec;
@@ -113,9 +113,9 @@ impl<'a> FromStr for Bewit<'a> {
 mod test {
     use super::*;
     use std::str::FromStr;
-    use credentials::Key;
+    use crate::credentials::Key;
     use ring::digest;
-    use mac::{Mac, MacType};
+    use crate::mac::{Mac, MacType};
 
     fn make_mac() -> Mac {
         let key = Key::new(vec![11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184,

@@ -8,6 +8,7 @@ repository = "https://github.com/taskcluster/rust-hawk"
 documentation = "https://docs.rs/hawk/"
 homepage = "https://docs.rs/hawk/"
 description = "Hawk Implementation for Rust"
+edition = "2018"
 
 [dev-dependencies]
 pretty_assertions = "^0.1.2"
