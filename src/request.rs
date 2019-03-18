@@ -6,8 +6,7 @@ use crate::header::Header;
 use crate::response::ResponseBuilder;
 use crate::bewit::Bewit;
 use crate::credentials::{Credentials, Key};
-use rand;
-use rand::Rng;
+use rand::prelude::*;
 use crate::error::*;
 use time::{now, Duration};
 use std::str;
@@ -48,7 +47,7 @@ impl<'a> Request<'a> {
     /// Create a new Header for this request, inventing a new nonce and setting the
     /// timestamp to the current time.
     pub fn make_header(&self, credentials: &Credentials) -> Result<Header> {
-        let nonce = random_string(10);
+        let nonce = random_string(10)?;
         self.make_header_full(credentials, time::now().to_timespec(), nonce)
     }
 
@@ -353,11 +352,11 @@ impl<'a> RequestBuilder<'a> {
 
 /// Create a random string with `bytes` bytes of entropy.  The string
 /// is base64-encoded. so it will be longer than bytes characters.
-fn random_string(bytes: usize) -> String {
-    let mut rng = rand::thread_rng();
+fn random_string(bytes: usize) -> Result<String> {
+    let mut rng = thread_rng();
     let mut bytes = vec![0u8; bytes];
-    rng.fill_bytes(&mut bytes);
-    base64::encode(&bytes)
+    rng.try_fill_bytes(&mut bytes)?;
+    Ok(base64::encode(&bytes))
 }
 
 #[cfg(test)]

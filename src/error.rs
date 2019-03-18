@@ -24,6 +24,9 @@ pub enum Error {
 
     #[fail(display = "Base64 Decode error: {}", _0)]
     Decode(#[fail(cause)] base64::DecodeError),
+
+    #[fail(display = "RNG error: {}", _0)]
+    Rng(#[fail(cause)] rand::Error),
 }
 
 #[derive(Fail, Debug, PartialEq)]
@@ -51,6 +54,13 @@ impl From<std::io::Error> for Error {
         Error::Io(e)
     }
 }
+
+impl From<rand::Error> for Error {
+    fn from(e: rand::Error) -> Self {
+        Error::Rng(e)
+    }
+}
+
 
 impl From<InvalidBewit> for Error {
     fn from(e: InvalidBewit) -> Self {
