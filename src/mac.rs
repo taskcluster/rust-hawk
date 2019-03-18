@@ -1,5 +1,5 @@
 use crate::credentials::Key;
-use base64;
+use base64::{STANDARD, display::Base64Display};
 use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
@@ -32,32 +32,40 @@ impl Mac {
                hash: Option<&[u8]>,
                ext: Option<&str>)
                -> Result<Mac> {
-        let mut buffer: Vec<u8> = vec![];
+        // Note: there's a \n after each item.
+        let mut buffer: Vec<u8> = Vec::with_capacity(
+            15 + 1 + // mac_type (worst case since it doesn't really matter)
+            10 + 1 + // ts (in practice this will be 10 bytes)
+            nonce.len() + 1 +
+            host.len() + 1 +
+            6 + 1 + // Longer than 6 bytes of port seems very unlikely
+            path.len() + 1 +
+            hash.map_or(0, |h| h.len() * 4 / 3) + 1 +
+            ext.map_or(0, |e| e.len()) + 1
+        );
 
-        writeln!(buffer,
-                 "{}",
-                 match mac_type {
-                     MacType::Header => "hawk.1.header",
-                     MacType::Response => "hawk.1.response",
-                     MacType::Bewit => "hawk.1.bewit",
-                 })?;
-        writeln!(buffer, "{}", ts.sec)?;
-        writeln!(buffer, "{}", nonce)?;
-        writeln!(buffer, "{}", method)?;
-        writeln!(buffer, "{}", path)?;
-        writeln!(buffer, "{}", host)?;
-        writeln!(buffer, "{}", port)?;
+        writeln!(
+            buffer,
+            "{mac_type}\n{ts}\n{nonce}\n{method}\n{path}\n{host}\n{port}",
+            mac_type = match mac_type {
+                MacType::Header => "hawk.1.header",
+                MacType::Response => "hawk.1.response",
+                MacType::Bewit => "hawk.1.bewit",
+            },
+            ts = ts.sec,
+            nonce = nonce,
+            method = method,
+            path = path,
+            host = host,
+            port = port,
+        )?;
 
         if let Some(h) = hash {
-            writeln!(buffer, "{}", base64::encode(h))?;
+            writeln!(buffer, "{}", Base64Display::with_config(h, STANDARD))?;
         } else {
             writeln!(buffer)?;
         }
-
-        match ext {
-            Some(e) => writeln!(buffer, "{}", e)?,
-            None => writeln!(buffer)?,
-        };
+        writeln!(buffer, "{}", ext.unwrap_or_default())?;
 
         Ok(Mac(key.sign(buffer.as_ref())))
     }

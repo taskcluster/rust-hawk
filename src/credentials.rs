@@ -9,15 +9,15 @@ pub struct Key(hmac::SigningKey);
 
 impl Key {
     pub fn new<B>(key: B, algorithm: &'static digest::Algorithm) -> Key
-        where B: Into<Vec<u8>>
+        where B: AsRef<[u8]>
     {
-        Key(hmac::SigningKey::new(algorithm, key.into().as_ref()))
+        Key(hmac::SigningKey::new(algorithm, key.as_ref()))
     }
 
     pub fn sign(&self, data: &[u8]) -> Vec<u8> {
         let digest = hmac::sign(&self.0, data);
         let mut mac = vec![0; self.0.digest_algorithm().output_len];
-        mac.clone_from_slice(digest.as_ref());
+        mac.copy_from_slice(digest.as_ref());
         mac
     }
 }
