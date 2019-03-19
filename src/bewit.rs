@@ -1,4 +1,3 @@
-use base64;
 use crate::mac::Mac;
 use crate::error::*;
 use std::str;

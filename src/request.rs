@@ -1,4 +1,3 @@
-use base64;
 use url::Url;
 use crate::mac::{Mac, MacType};
 use crate::header::Header;
