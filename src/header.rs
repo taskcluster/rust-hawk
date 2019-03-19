@@ -1,4 +1,4 @@
-use base64;
+use base64::display::Base64Display;
 use std::fmt;
 use std::str::FromStr;
 use crate::mac::Mac;
@@ -83,7 +83,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref mac) = self.mac {
-            write!(f, "{}mac=\"{}\"", sep, base64::encode(mac))?;
+            write!(f, "{}mac=\"{}\"", sep, Base64Display::with_config(mac, base64::STANDARD))?;
             sep = ", ";
         }
         if let Some(ref ext) = self.ext {
@@ -91,7 +91,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref hash) = self.hash {
-            write!(f, "{}hash=\"{}\"", sep, base64::encode(hash))?;
+            write!(f, "{}hash=\"{}\"", sep, Base64Display::with_config(hash, base64::STANDARD))?;
             sep = ", ";
         }
         if let Some(ref app) = self.app {

@@ -35,10 +35,11 @@ impl<'a> Bewit<'a> {
 
     /// Generate the fully-encoded string for this Bewit
     pub fn to_str(&self) -> String {
+        use base64::display::Base64Display;
         let raw = format!("{}\\{}\\{}\\{}",
                           self.id,
                           self.exp.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
-                          base64::encode(self.mac.as_ref()),
+                          Base64Display::with_config(self.mac.as_ref(), base64::STANDARD),
                           match self.ext {
                               Some(ref cow) => cow.as_ref(),
                               None => "",
