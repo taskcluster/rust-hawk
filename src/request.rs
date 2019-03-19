@@ -1,5 +1,4 @@
 use base64;
-use time;
 use url::Url;
 use crate::mac::{Mac, MacType};
 use crate::header::Header;
@@ -8,7 +7,7 @@ use crate::bewit::Bewit;
 use crate::credentials::{Credentials, Key};
 use rand::prelude::*;
 use crate::error::*;
-use time::{now, Duration};
+use std::time::{SystemTime, Duration};
 use std::str;
 
 /// Request represents a single HTTP request.
@@ -48,14 +47,14 @@ impl<'a> Request<'a> {
     /// timestamp to the current time.
     pub fn make_header(&self, credentials: &Credentials) -> Result<Header> {
         let nonce = random_string(10)?;
-        self.make_header_full(credentials, time::now().to_timespec(), nonce)
+        self.make_header_full(credentials, SystemTime::now(), nonce)
     }
 
     /// Similar to `make_header`, but allowing specification of the timestamp
     /// and nonce.
     pub fn make_header_full<S>(&self,
                                credentials: &Credentials,
-                               ts: time::Timespec,
+                               ts: SystemTime,
                                nonce: S)
                                -> Result<Header>
         where S: Into<String>
@@ -96,8 +95,7 @@ impl<'a> Request<'a> {
     /// Make a "bewit" that can be attached to a URL to authenticate GET access.
     ///
     /// The ttl gives the time for which this bewit is valid, starting now.
-    pub fn make_bewit(&self, credentials: &'a Credentials, ttl: Duration) -> Result<Bewit<'a>> {
-        let exp = time::now().to_timespec() + ttl;
+    pub fn make_bewit(&self, credentials: &'a Credentials, exp: SystemTime) -> Result<Bewit<'a>> {
         // note that this includes `method` and `hash` even though they must always be GET and None
         // for bewits.  If they aren't, then the bewit just won't validate -- no need to catch
         // that now
@@ -113,6 +111,13 @@ impl<'a> Request<'a> {
                            self.ext)?;
         let bewit = Bewit::new(&credentials.id, exp, mac, self.ext);
         Ok(bewit)
+    }
+
+    /// Variant of `make_bewit` that takes a Duration (starting from now)
+    /// instead of a SystemTime, provided for convenience.
+    pub fn make_bewit_with_ttl(&self, credentials: &'a Credentials, ttl: Duration) -> Result<Bewit<'a>> {
+        let exp = SystemTime::now() + ttl;
+        self.make_bewit(credentials, exp)
     }
 
     /// Validate the given header.  This validates that the `mac` field matches that calculated
@@ -189,8 +194,12 @@ impl<'a> Request<'a> {
         }
 
         // ..then the timestamp
-        let now = now().to_timespec();
-        let skew = if now > ts { now - ts } else { ts - now };
+        let now = SystemTime::now();
+        let skew = if now > ts {
+            now.duration_since(ts).unwrap()
+        } else {
+            ts.duration_since(now).unwrap()
+        };
         if skew > ts_skew {
             return false;
         }
@@ -229,7 +238,7 @@ impl<'a> Request<'a> {
             return false;
         }
 
-        let now = time::now().to_timespec();
+        let now = SystemTime::now();
         if bewit.exp() < now {
             return false;
         }
@@ -362,12 +371,12 @@ fn random_string(bytes: usize) -> Result<String> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use time::Timespec;
     use crate::credentials::{Credentials, Key};
     use crate::header::Header;
     use url::Url;
     use ring::digest;
     use std::str::FromStr;
+    use std::time::{SystemTime, Duration, UNIX_EPOCH};
 
     // this is a header from a real request using the JS Hawk library, to
     // https://pulse.taskcluster.net:443/v1/namespaces with credentials "me" / "tok"
@@ -436,12 +445,12 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header = req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny")
+        let header = req.make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
             .unwrap();
         assert_eq!(header,
                    Header {
                        id: Some("me".to_string()),
-                       ts: Some(Timespec::new(1000, 100)),
+                       ts: Some(UNIX_EPOCH + Duration::new(1000, 100)),
                        nonce: Some("nonny".to_string()),
                        mac: Some(Mac::from(vec![122, 47, 2, 53, 195, 247, 185, 107, 133, 250,
                                                 61, 134, 200, 35, 118, 94, 48, 175, 237, 108,
@@ -466,12 +475,12 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header = req.make_header_full(&credentials, Timespec::new(1000, 100), "nonny")
+        let header = req.make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
             .unwrap();
         assert_eq!(header,
                    Header {
                        id: Some("me".to_string()),
-                       ts: Some(Timespec::new(1000, 100)),
+                       ts: Some(UNIX_EPOCH + Duration::new(1000, 100)),
                        nonce: Some("nonny".to_string()),
                        mac: Some(Mac::from(vec![72, 123, 243, 214, 145, 81, 129, 54, 183, 90,
                                                 22, 136, 192, 146, 208, 53, 216, 138, 145, 94,
@@ -491,10 +500,13 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], &digest::SHA256),
         };
-        let header = req.make_header_full(&credentials, now().to_timespec(), "nonny")
+        let header = req.make_header_full(&credentials, SystemTime::now(), "nonny")
             .unwrap();
-        assert!(req.validate_header(&header, &credentials.key, Duration::minutes(1)));
+        assert!(req.validate_header(&header, &credentials.key, Duration::from_secs(1 * 60)));
     }
+
+    // Well, close enough.
+    const ONE_YEAR_IN_SECS: u64 = 365 * 24 * 60 * 60;
 
     #[test]
     fn test_validate_real_request() {
@@ -507,7 +519,7 @@ mod test {
             .request();
         // allow 1000 years skew, since this was a real request that
         // happened back in 2017, when life was simple and carefree
-        assert!(req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+        assert!(req.validate_header(&header, &credentials.key, Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     #[test]
@@ -519,7 +531,7 @@ mod test {
         };
         let req = RequestBuilder::new("GET", "pulse.taskcluster.net", 443, "/v1/namespaces")
             .request();
-        assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+        assert!(!req.validate_header(&header, &credentials.key, Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     #[test]
@@ -530,12 +542,12 @@ mod test {
             key: Key::new("tok", &digest::SHA256),
         };
         let req = RequestBuilder::new("GET", "pulse.taskcluster.net", 443, "WRONG PATH").request();
-        assert!(!req.validate_header(&header, &credentials.key, Duration::weeks(52000)));
+        assert!(!req.validate_header(&header, &credentials.key, Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     fn make_header_without_hash() -> Header {
         Header::new(Some("dh37fgj492je"),
-                    Some(Timespec::new(1353832234, 0)),
+                    Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
                     Some("j4h3g2"),
                     Some(Mac::from(vec![161, 105, 122, 110, 248, 62, 129, 193, 148, 206, 239,
                                         193, 219, 46, 137, 221, 51, 170, 135, 114, 81, 68, 145,
@@ -549,7 +561,7 @@ mod test {
 
     fn make_header_with_hash() -> Header {
         Header::new(Some("dh37fgj492je"),
-                    Some(Timespec::new(1353832234, 0)),
+                    Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
                     Some("j4h3g2"),
                     Some(Mac::from(vec![189, 53, 155, 244, 203, 150, 255, 238, 135, 144, 186,
                                         93, 6, 189, 184, 21, 150, 210, 226, 61, 93, 154, 17,
@@ -567,7 +579,7 @@ mod test {
         let req = RequestBuilder::new("", "", 0, "").request();
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
-                                    Duration::weeks(52000)));
+                                    Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     #[test]
@@ -576,7 +588,7 @@ mod test {
         let req = RequestBuilder::new("", "", 0, "").request();
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
-                                    Duration::weeks(52000)));
+                                    Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     #[test]
@@ -588,7 +600,7 @@ mod test {
             .request();
         assert!(!req.validate_header(&header,
                                      &Key::new("tok", &digest::SHA256),
-                                     Duration::weeks(52000)));
+                                     Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
     #[test]
@@ -600,7 +612,7 @@ mod test {
             .request();
         assert!(req.validate_header(&header,
                                     &Key::new("tok", &digest::SHA256),
-                                    Duration::weeks(52000)));
+                                    Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
 
         // ..but supplying the wrong hash will cause validation to fail
         let hash = vec![99, 99, 99, 99];
@@ -609,16 +621,16 @@ mod test {
             .request();
         assert!(!req.validate_header(&header,
                                      &Key::new("tok", &digest::SHA256),
-                                     Duration::weeks(52000)));
+                                     Duration::from_secs(1000 * ONE_YEAR_IN_SECS)));
     }
 
-    fn round_trip_bewit(req: Request, duration: Duration, expected: bool) {
+    fn round_trip_bewit(req: Request, ts: SystemTime, expected: bool) {
         let credentials = Credentials {
             id: "me".to_string(),
             key: Key::new("tok", &digest::SHA256),
         };
 
-        let bewit = req.make_bewit(&credentials, duration).unwrap();
+        let bewit = req.make_bewit(&credentials, ts).unwrap();
 
         // convert to a string and back
         let bewit = bewit.to_str();
@@ -631,7 +643,7 @@ mod test {
     #[test]
     fn test_validate_bewit() {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
-        round_trip_bewit(req, Duration::minutes(10), true);
+        round_trip_bewit(req, SystemTime::now() + Duration::from_secs(10 * 60), true);
     }
 
     #[test]
@@ -639,12 +651,12 @@ mod test {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z")
             .ext("abcd")
             .request();
-        round_trip_bewit(req, Duration::minutes(10), true);
+        round_trip_bewit(req, SystemTime::now() + Duration::from_secs(10 * 60), true);
     }
 
     #[test]
     fn test_validate_bewit_expired() {
         let req = RequestBuilder::new("GET", "foo.com", 443, "/x/y/z").request();
-        round_trip_bewit(req, Duration::minutes(-10), false);
+        round_trip_bewit(req, SystemTime::now() - Duration::from_secs(10 * 60), false);
     }
 }

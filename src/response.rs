@@ -187,12 +187,12 @@ mod test {
     use crate::header::Header;
     use crate::credentials::Key;
     use crate::mac::Mac;
-    use time::Timespec;
+    use std::time::{Duration, UNIX_EPOCH};
     use ring::digest;
 
     fn make_req_header() -> Header {
         Header::new(None,
-                    Some(Timespec::new(1353832234, 0)),
+                    Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
                     Some("j4h3g2"),
                     None,
                     None,

@@ -16,7 +16,6 @@ pretty_assertions = "^0.1.2"
 [dependencies]
 base64 = "0.10.1"
 ring = "0.14.6"
-time = "0.1.42"
 url = "1.7.2"
 rand = "0.6.5"
 failure = { version = "0.1.5", features = ["derive"] }

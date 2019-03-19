@@ -10,11 +10,8 @@
 //! Request instance, which will generate the header.
 //!
 //! ```
-//! #[macro_use] extern crate pretty_assertions;
-//! extern crate time;
-//! extern crate hawk;
-//!
 //! use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
+//! use std::time::{Duration, UNIX_EPOCH};
 //!
 //! fn main() {
 //!     // provide the Hawk id and key
@@ -47,11 +44,9 @@
 //! Request instance, and use the request to validate the header.
 //!
 //! ```
-//! extern crate time;
-//! extern crate hawk;
-//!
 //! use hawk::{RequestBuilder, Header, Key, SHA256};
 //! use hawk::mac::Mac;
+//! use std::time::{Duration, UNIX_EPOCH};
 //!
 //! fn main() {
 //!    let mac = Mac::from(vec![7, 22, 226, 240, 84, 78, 49, 75, 115, 144, 70,
@@ -59,7 +54,7 @@
 //!                             154, 213, 118, 19, 63, 183, 108, 215, 134, 118, 115]);
 //!    // get the header (usually from the received request; constructed directly here)
 //!    let hdr = Header::new(Some("dh37fgj492je"),
-//!                          Some(time::Timespec::new(1353832234, 0)),
+//!                          Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
 //!                          Some("j4h3g2"),
 //!                          Some(mac),
 //!                          Some("my-ext-value"),
@@ -74,12 +69,12 @@
 //!        .request();
 //!
 //!    let key = Key::new(vec![99u8; 32], &SHA256);
-//!    if !request.validate_header(&hdr, &key, time::Duration::weeks(5200)) {
+//!    let one_week_in_secs = 7 * 24 * 60 * 60;
+//!    if !request.validate_header(&hdr, &key, Duration::from_secs(5200 * one_week_in_secs)) {
 //!        panic!("header validation failed. Is it 2117 already?");
 //!    }
 //! }
 extern crate base64;
-extern crate time;
 extern crate ring;
 extern crate url;
 extern crate rand;

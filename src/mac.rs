@@ -4,7 +4,7 @@ use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
 use crate::error::*;
-use time;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The kind of MAC calcuation (corresponding to the first line of the message)
 pub enum MacType {
@@ -23,7 +23,7 @@ pub struct Mac(Vec<u8>);
 impl Mac {
     pub fn new(mac_type: MacType,
                key: &Key,
-               ts: time::Timespec,
+               ts: SystemTime,
                nonce: &str,
                method: &str,
                host: &str,
@@ -52,7 +52,7 @@ impl Mac {
                 MacType::Response => "hawk.1.response",
                 MacType::Bewit => "hawk.1.bewit",
             },
-            ts = ts.sec,
+            ts = ts.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
             nonce = nonce,
             method = method,
             path = path,
@@ -101,8 +101,8 @@ impl PartialEq for Mac {
 #[cfg(test)]
 mod test {
     use super::{Mac, MacType};
-    use time::Timespec;
     use crate::credentials::Key;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
     use ring::digest;
 
     fn key() -> Key {
@@ -111,12 +111,16 @@ mod test {
                  &digest::SHA256)
     }
 
+    fn sys_time(secs: u64, ns: u32) -> SystemTime {
+        UNIX_EPOCH + Duration::new(secs, ns)
+    }
+
     #[test]
     fn test_make_mac() {
         let key = key();
         let mac = Mac::new(MacType::Header,
                            &key,
-                           Timespec::new(1000, 100),
+                           sys_time(1000, 100),
                            "nonny",
                            "POST",
                            "mysite.com",
@@ -137,7 +141,7 @@ mod test {
         let hash = vec![1, 2, 3, 4, 5];
         let mac = Mac::new(MacType::Header,
                            &key,
-                           Timespec::new(1000, 100),
+                           sys_time(1000, 100),
                            "nonny",
                            "POST",
                            "mysite.com",
@@ -158,7 +162,7 @@ mod test {
         let ext = "ext-data".to_string();
         let mac = Mac::new(MacType::Header,
                            &key,
-                           Timespec::new(1000, 100),
+                           sys_time(1000, 100),
                            "nonny",
                            "POST",
                            "mysite.com",
