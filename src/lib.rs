@@ -74,10 +74,6 @@
 //!        panic!("header validation failed. Is it 2117 already?");
 //!    }
 //! }
-extern crate base64;
-extern crate ring;
-extern crate url;
-extern crate rand;
 
 #[cfg(test)]
 #[macro_use]
