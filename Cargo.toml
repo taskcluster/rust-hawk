@@ -8,14 +8,14 @@ repository = "https://github.com/taskcluster/rust-hawk"
 documentation = "https://docs.rs/hawk/"
 homepage = "https://docs.rs/hawk/"
 description = "Hawk Implementation for Rust"
+edition = "2018"
 
 [dev-dependencies]
 pretty_assertions = "^0.1.2"
 
 [dependencies]
-base64 = "~0.6.0"
-ring = "^0.14.5"
-time = "^0.1.32"
-url = "1.4.0"
-rand = "0.3"
-error-chain = "^0.11.0-rc.2"
+base64 = "0.10.1"
+ring = "0.14.6"
+url = "1.7.2"
+rand = "0.6.5"
+failure = { version = "0.1.5", features = ["derive"] }

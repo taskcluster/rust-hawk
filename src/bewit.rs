@@ -1,9 +1,8 @@
-use base64;
-use mac::Mac;
-use error::*;
+use crate::mac::Mac;
+use crate::error::*;
 use std::str;
 use std::str::FromStr;
-use time::Timespec;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use std::borrow::Cow;
 
 /// A Bewit is a piece of data attached to a GET request that functions in place of a Hawk
@@ -12,7 +11,7 @@ use std::borrow::Cow;
 #[derive(Clone, Debug)]
 pub struct Bewit<'a> {
     id: Cow<'a, str>,
-    exp: Timespec,
+    exp: SystemTime,
     mac: Cow<'a, Mac>,
     ext: Option<Cow<'a, str>>,
 }
@@ -21,7 +20,7 @@ impl<'a> Bewit<'a> {
     /// Create a new Bewit with the given values.
     ///
     /// See Request.make_bewit for an easier way to make a Bewit
-    pub fn new(id: &'a str, exp: Timespec, mac: Mac, ext: Option<&'a str>) -> Bewit<'a> {
+    pub fn new(id: &'a str, exp: SystemTime, mac: Mac, ext: Option<&'a str>) -> Bewit<'a> {
         Bewit {
             id: Cow::Borrowed(id),
             exp,
@@ -35,10 +34,11 @@ impl<'a> Bewit<'a> {
 
     /// Generate the fully-encoded string for this Bewit
     pub fn to_str(&self) -> String {
+        use base64::display::Base64Display;
         let raw = format!("{}\\{}\\{}\\{}",
                           self.id,
-                          self.exp.sec,
-                          base64::encode(self.mac.as_ref()),
+                          self.exp.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
+                          Base64Display::with_config(self.mac.as_ref(), base64::STANDARD),
                           match self.ext {
                               Some(ref cow) => cow.as_ref(),
                               None => "",
@@ -53,7 +53,7 @@ impl<'a> Bewit<'a> {
     }
 
     /// Get the expiration time of the bewit
-    pub fn exp(&self) -> Timespec {
+    pub fn exp(&self) -> SystemTime {
         self.exp
     }
 
@@ -76,27 +76,26 @@ const BACKSLASH: u8 = b'\\';
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
     fn from_str(bewit: &str) -> Result<Bewit<'a>> {
-        let bewit = base64::decode(bewit).chain_err(|| "Error decoding bewit base64")?;
+        let bewit = base64::decode(bewit)?;
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {
-            bail!("Invalid bewit format");
+            return Err(InvalidBewit::Format.into());
         }
 
-        let id = String::from_utf8(parts[0].to_vec()).chain_err(|| "Invalid bewit id")?;
+        let id = String::from_utf8(parts[0].to_vec()).map_err(|_| InvalidBewit::Id)?;
 
-        let exp = str::from_utf8(parts[1]).chain_err(|| "Invalid bewit exp")?;
-        let exp = i64::from_str(exp).chain_err(|| "Invalid bewit exp")?;
-        let exp = Timespec::new(exp, 0);
+        let exp = str::from_utf8(parts[1]).map_err(|_| InvalidBewit::Exp)?;
+        let exp = u64::from_str(exp).map_err(|_| InvalidBewit::Exp)?;
+        let exp = UNIX_EPOCH + Duration::new(exp, 0);
 
-        let mac = str::from_utf8(parts[2]).chain_err(|| "Invalid bewit mac")?;
-        let mac = Mac::from(base64::decode(mac).chain_err(|| "Invalid bewit mac")?);
+        let mac = str::from_utf8(parts[2]).map_err(|_| InvalidBewit::Mac)?;
+        let mac = Mac::from(base64::decode(mac).map_err(|_| InvalidBewit::Mac)?);
 
         let ext = match parts[3].len() {
             0 => None,
             _ => {
-                Some(Cow::Owned(String::from_utf8(parts[3].to_vec())
-                                    .chain_err(|| "Invalid bew,it ext")?))
+                Some(Cow::Owned(String::from_utf8(parts[3].to_vec()).map_err(|_| InvalidBewit::Ext)?))
             }
         };
 
@@ -113,9 +112,9 @@ impl<'a> FromStr for Bewit<'a> {
 mod test {
     use super::*;
     use std::str::FromStr;
-    use credentials::Key;
+    use crate::credentials::Key;
     use ring::digest;
-    use mac::{Mac, MacType};
+    use crate::mac::{Mac, MacType};
 
     fn make_mac() -> Mac {
         let key = Key::new(vec![11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184,
@@ -124,7 +123,7 @@ mod test {
                            &digest::SHA256);
         Mac::new(MacType::Header,
                  &key,
-                 Timespec::new(1353832834, 100),
+                 UNIX_EPOCH + Duration::new(1353832834, 100),
                  "nonny",
                  "POST",
                  "mysite.com",
@@ -137,10 +136,10 @@ mod test {
 
     #[test]
     fn test_to_str() {
-        let bewit = Bewit::new("me", Timespec::new(1353832834, 0), make_mac(), None);
+        let bewit = Bewit::new("me", UNIX_EPOCH + Duration::new(1353832834, 0), make_mac(), None);
         assert_eq!(bewit.to_str(),
                    "bWVcMTM1MzgzMjgzNFxmaXk0ZTV3QmRhcEROeEhIZUExOE5yU3JVMVUzaVM2NmdtMFhqVEpwWXlVPVw");
-        let bewit = Bewit::new("me", Timespec::new(1353832834, 0), make_mac(), Some("abcd"));
+        let bewit = Bewit::new("me", UNIX_EPOCH + Duration::new(1353832834, 0), make_mac(), Some("abcd"));
         assert_eq!(bewit.to_str(),
                    "bWVcMTM1MzgzMjgzNFxmaXk0ZTV3QmRhcEROeEhIZUExOE5yU3JVMVUzaVM2NmdtMFhqVEpwWXlVPVxhYmNk");
     }
@@ -149,7 +148,7 @@ mod test {
     fn test_accessors() {
         let bewit = Bewit::from_str("bWVcMTM1MzgzMjgzNFxmaXk0ZTV3QmRhcEROeEhIZUExOE5yU3JVMVUzaVM2NmdtMFhqVEpwWXlVPVw").unwrap();
         assert_eq!(bewit.id(), "me");
-        assert_eq!(bewit.exp(), Timespec::new(1353832834, 0));
+        assert_eq!(bewit.exp(), UNIX_EPOCH + Duration::new(1353832834, 0));
         assert_eq!(bewit.mac(), &make_mac());
         assert_eq!(bewit.ext(), None);
     }

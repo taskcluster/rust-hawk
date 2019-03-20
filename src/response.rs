@@ -1,7 +1,7 @@
-use mac::{Mac, MacType};
-use header::Header;
-use credentials::Key;
-use error::*;
+use crate::mac::{Mac, MacType};
+use crate::header::Header;
+use crate::credentials::Key;
+use crate::error::*;
 
 /// A Response represents a response from an HTTP server.
 ///
@@ -30,11 +30,11 @@ impl<'a> Response<'a> {
         let mac;
         let ts = self.req_header
             .ts
-            .ok_or("Missing `ts` atttribute in Hawk header")?;
+            .ok_or(Error::MissingTs)?;
         let nonce = self.req_header
             .nonce
             .as_ref()
-            .ok_or("Missing `nonce` attribute in Hawk header")?;
+            .ok_or(Error::MissingNonce)?;
         mac = Mac::new(MacType::Response,
                        key,
                        ts,
@@ -184,15 +184,15 @@ impl<'a> ResponseBuilder<'a> {
 #[cfg(test)]
 mod test {
     use super::ResponseBuilder;
-    use header::Header;
-    use credentials::Key;
-    use mac::Mac;
-    use time::Timespec;
+    use crate::header::Header;
+    use crate::credentials::Key;
+    use crate::mac::Mac;
+    use std::time::{Duration, UNIX_EPOCH};
     use ring::digest;
 
     fn make_req_header() -> Header {
         Header::new(None,
-                    Some(Timespec::new(1353832234, 0)),
+                    Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
                     Some("j4h3g2"),
                     None,
                     None,
