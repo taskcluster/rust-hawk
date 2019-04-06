@@ -1,7 +1,7 @@
-use crate::mac::{Mac, MacType};
-use crate::header::Header;
 use crate::credentials::Key;
 use crate::error::*;
+use crate::header::Header;
+use crate::mac::{Mac, MacType};
 
 /// A Response represents a response from an HTTP server.
 ///
@@ -28,39 +28,38 @@ impl<'a> Response<'a> {
     /// Create a new Header for this response, based on the given request and request header
     pub fn make_header(&self, key: &Key) -> Result<Header> {
         let mac;
-        let ts = self.req_header
-            .ts
-            .ok_or(Error::MissingTs)?;
-        let nonce = self.req_header
-            .nonce
-            .as_ref()
-            .ok_or(Error::MissingNonce)?;
-        mac = Mac::new(MacType::Response,
-                       key,
-                       ts,
-                       nonce,
-                       self.method,
-                       self.host,
-                       self.port,
-                       self.path,
-                       self.hash,
-                       self.ext)?;
+        let ts = self.req_header.ts.ok_or(Error::MissingTs)?;
+        let nonce = self.req_header.nonce.as_ref().ok_or(Error::MissingNonce)?;
+        mac = Mac::new(
+            MacType::Response,
+            key,
+            ts,
+            nonce,
+            self.method,
+            self.host,
+            self.port,
+            self.path,
+            self.hash,
+            self.ext,
+        )?;
 
         // Per JS implementation, the Server-Authorization header includes only mac, hash, and ext
-        Header::new(None,
-                    None,
-                    None,
-                    Some(mac),
-                    match self.ext {
-                        None => None,
-                        Some(v) => Some(v.to_string()),
-                    },
-                    match self.hash {
-                        None => None,
-                        Some(v) => Some(v.to_vec()),
-                    },
-                    None,
-                    None)
+        Header::new(
+            None,
+            None,
+            None,
+            Some(mac),
+            match self.ext {
+                None => None,
+                Some(v) => Some(v.to_string()),
+            },
+            match self.hash {
+                None => None,
+                Some(v) => Some(v.to_vec()),
+            },
+            None,
+            None,
+        )
     }
 
     /// Validate a Server-Authorization header.
@@ -97,16 +96,18 @@ impl<'a> Response<'a> {
         };
 
         // first verify the MAC
-        match Mac::new(MacType::Response,
-                       key,
-                       ts,
-                       nonce,
-                       self.method,
-                       self.host,
-                       self.port,
-                       self.path,
-                       header_hash,
-                       header_ext) {
+        match Mac::new(
+            MacType::Response,
+            key,
+            ts,
+            nonce,
+            self.method,
+            self.host,
+            self.port,
+            self.path,
+            header_hash,
+            header_ext,
+        ) {
             Ok(calculated_mac) => {
                 if &calculated_mac != header_mac {
                     return false;
@@ -142,12 +143,13 @@ impl<'a> ResponseBuilder<'a> {
     /// Generate a new Response from a request header.
     ///
     /// This is more commonly accessed through `Request::make_response`.
-    pub fn from_request_header(req_header: &'a Header,
-                               method: &'a str,
-                               host: &'a str,
-                               port: u16,
-                               path: &'a str)
-                               -> Self {
+    pub fn from_request_header(
+        req_header: &'a Header,
+        method: &'a str,
+        host: &'a str,
+        port: u16,
+        path: &'a str,
+    ) -> Self {
         ResponseBuilder(Response {
             method,
             host,
@@ -184,22 +186,24 @@ impl<'a> ResponseBuilder<'a> {
 #[cfg(test)]
 mod test {
     use super::ResponseBuilder;
-    use crate::header::Header;
     use crate::credentials::Key;
+    use crate::header::Header;
     use crate::mac::Mac;
-    use std::time::{Duration, UNIX_EPOCH};
     use ring::digest;
+    use std::time::{Duration, UNIX_EPOCH};
 
     fn make_req_header() -> Header {
-        Header::new(None,
-                    Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
-                    Some("j4h3g2"),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None)
-            .unwrap()
+        Header::new(
+            None,
+            Some(UNIX_EPOCH + Duration::new(1353832234, 0)),
+            Some("j4h3g2"),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -208,18 +212,21 @@ mod test {
         let resp =
             ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
                 .response();
-        let mac: Mac = Mac::from(vec![48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71,
-                                      120, 68, 238, 228, 40, 55, 64, 190, 73, 102, 123, 79, 185,
-                                      199, 26, 62, 1, 137, 170]);
-        let server_header = Header::new(None,
-                                        None,
-                                        None,
-                                        Some(mac),
-                                        Some("server-ext"),
-                                        None,
-                                        None,
-                                        None)
-            .unwrap();
+        let mac: Mac = Mac::from(vec![
+            48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71, 120, 68, 238, 228, 40, 55,
+            64, 190, 73, 102, 123, 79, 185, 199, 26, 62, 1, 137, 170,
+        ]);
+        let server_header = Header::new(
+            None,
+            None,
+            None,
+            Some(mac),
+            Some("server-ext"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -231,18 +238,21 @@ mod test {
         let resp =
             ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
                 .response();
-        let mac: Mac = Mac::from(vec![33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161,
-                                      215, 145, 22, 34, 206, 207, 242, 100, 33, 193, 36, 96, 149,
-                                      133, 180, 4, 132, 87, 207, 238]);
-        let server_header = Header::new(None,
-                                        None,
-                                        None,
-                                        Some(mac),
-                                        Some("server-ext"),
-                                        Some(vec![1, 2, 3, 4]),
-                                        None,
-                                        None)
-            .unwrap();
+        let mac: Mac = Mac::from(vec![
+            33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161, 215, 145, 22, 34, 206, 207,
+            242, 100, 33, 193, 36, 96, 149, 133, 180, 4, 132, 87, 207, 238,
+        ]);
+        let server_header = Header::new(
+            None,
+            None,
+            None,
+            Some(mac),
+            Some("server-ext"),
+            Some(vec![1, 2, 3, 4]),
+            None,
+            None,
+        )
+        .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -255,18 +265,21 @@ mod test {
             ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
                 .hash(&hash[..])
                 .response();
-        let mac: Mac = Mac::from(vec![48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71,
-                                      120, 68, 238, 228, 40, 55, 64, 190, 73, 102, 123, 79, 185,
-                                      199, 26, 62, 1, 137, 170]);
-        let server_header = Header::new(None,
-                                        None,
-                                        None,
-                                        Some(mac),
-                                        Some("server-ext"),
-                                        None,
-                                        None,
-                                        None)
-            .unwrap();
+        let mac: Mac = Mac::from(vec![
+            48, 133, 228, 163, 224, 197, 222, 77, 117, 81, 143, 73, 71, 120, 68, 238, 228, 40, 55,
+            64, 190, 73, 102, 123, 79, 185, 199, 26, 62, 1, 137, 170,
+        ]);
+        let server_header = Header::new(
+            None,
+            None,
+            None,
+            Some(mac),
+            Some("server-ext"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
     }
 
@@ -280,18 +293,21 @@ mod test {
             ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
                 .hash(&hash[..])
                 .response();
-        let mac: Mac = Mac::from(vec![33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161,
-                                      215, 145, 22, 34, 206, 207, 242, 100, 33, 193, 36, 96, 149,
-                                      133, 180, 4, 132, 87, 207, 238]);
-        let server_header = Header::new(None,
-                                        None,
-                                        None,
-                                        Some(mac),
-                                        Some("server-ext"),
-                                        Some(vec![1, 2, 3, 4]),
-                                        None,
-                                        None)
-            .unwrap();
+        let mac: Mac = Mac::from(vec![
+            33, 147, 159, 211, 184, 194, 189, 74, 53, 229, 241, 161, 215, 145, 22, 34, 206, 207,
+            242, 100, 33, 193, 36, 96, 149, 133, 180, 4, 132, 87, 207, 238,
+        ]);
+        let server_header = Header::new(
+            None,
+            None,
+            None,
+            Some(mac),
+            Some("server-ext"),
+            Some(vec![1, 2, 3, 4]),
+            None,
+            None,
+        )
+        .unwrap();
         assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
 
         // a different supplied hash won't match..

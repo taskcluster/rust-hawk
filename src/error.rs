@@ -61,7 +61,6 @@ impl From<rand::Error> for Error {
     }
 }
 
-
 impl From<InvalidBewit> for Error {
     fn from(e: InvalidBewit) -> Self {
         Error::InvalidBewit(e)

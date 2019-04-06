@@ -12,7 +12,8 @@ impl PayloadHasher {
     /// not include parameters. The digest is assumed to be the same as the digest used
     /// for the credentials in the request.
     pub fn new<B>(content_type: B, algorithm: &'static digest::Algorithm) -> Self
-        where B: AsRef<[u8]>
+    where
+        B: AsRef<[u8]>,
     {
         let mut hasher = PayloadHasher {
             context: digest::Context::new(algorithm),
@@ -25,12 +26,14 @@ impl PayloadHasher {
     }
 
     /// Hash a single value and return it
-    pub fn hash<B1, B2>(content_type: B1,
-                        algorithm: &'static digest::Algorithm,
-                        payload: B2)
-                        -> Vec<u8>
-        where B1: AsRef<[u8]>,
-              B2: AsRef<[u8]>
+    pub fn hash<B1, B2>(
+        content_type: B1,
+        algorithm: &'static digest::Algorithm,
+        payload: B2,
+    ) -> Vec<u8>
+    where
+        B1: AsRef<[u8]>,
+        B2: AsRef<[u8]>,
     {
         let mut hasher = PayloadHasher::new(content_type, algorithm);
         hasher.update(payload);
@@ -39,7 +42,8 @@ impl PayloadHasher {
 
     /// Update the hash with new data.
     pub fn update<B>(&mut self, data: B)
-        where B: AsRef<[u8]>
+    where
+        B: AsRef<[u8]>,
     {
         self.context.update(data.as_ref());
     }
@@ -77,10 +81,13 @@ mod tests {
         let hash4 = // "pàyload" as utf-8 bytes
             PayloadHasher::hash("text/plain", &SHA256, vec![112, 195, 160, 121, 108, 111, 97, 100]);
 
-        assert_eq!(hash1,
-                   vec![228, 238, 241, 224, 235, 114, 158, 112, 211, 254, 118, 89, 25, 236, 87,
-                        176, 181, 54, 61, 135, 42, 223, 188, 103, 194, 59, 83, 36, 136, 31, 198,
-                        50]);
+        assert_eq!(
+            hash1,
+            vec![
+                228, 238, 241, 224, 235, 114, 158, 112, 211, 254, 118, 89, 25, 236, 87, 176, 181,
+                54, 61, 135, 42, 223, 188, 103, 194, 59, 83, 36, 136, 31, 198, 50
+            ]
+        );
         assert_eq!(hash2, hash1);
         assert_eq!(hash3, hash1);
         assert_eq!(hash4, hash1);

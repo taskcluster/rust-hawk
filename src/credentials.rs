@@ -9,7 +9,8 @@ pub struct Key(hmac::SigningKey);
 
 impl Key {
     pub fn new<B>(key: B, algorithm: &'static digest::Algorithm) -> Key
-        where B: AsRef<[u8]>
+    where
+        B: AsRef<[u8]>,
     {
         Key(hmac::SigningKey::new(algorithm, key.as_ref()))
     }
