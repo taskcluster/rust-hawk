@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
-/// Headers can be derived froms trings using the `FromStr` trait, and formatted into a
+/// Headers can be derived from strings using the `FromStr` trait, and formatted into a
 /// string using the `fmt_header` method.
 ///
 /// All fields are optional, although for specific purposes some fields must be present.
@@ -25,7 +25,7 @@ pub struct Header {
 impl Header {
     /// Create a new Header with the full set of Hawk fields.
     ///
-    /// This is a low-level funtion. Headers are more often created from Request or Responses.
+    /// This is a low-level function. Headers are more often created from Requests or Responses.
     ///
     /// Note that none of the string-formatted header components can contain the character `\"`.
     pub fn new<S>(
