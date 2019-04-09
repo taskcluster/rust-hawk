@@ -373,7 +373,15 @@ impl<'a> RequestBuilder<'a> {
         let port = url
             .port_or_known_default()
             .ok_or_else(|| Error::InvalidUrl(format!("url {} has no port", url)))?;
-        let path = url.path();
+        let path = if let Some(ref query) = url.query() {
+            // Url does not have a `uri` method that returns the combined path and
+            // query, so we simulate it here
+            let url_str = url.as_str();
+            let offset = url_str.len() - query.len() - url.path().len() - 1;
+            &url_str[offset..]
+        } else {
+            url.path()
+        };
         Ok((host, port, path))
     }
 }
@@ -453,6 +461,46 @@ mod test {
         let req = RequestBuilder::from_url("GET", &url).unwrap().request();
 
         assert_eq!(req.path, "/foo");
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
+    fn test_url_builder_with_query() {
+        let url = Url::parse("https://example.com/foo?foo=bar").unwrap();
+        let req = RequestBuilder::from_url("GET", &url).unwrap().request();
+
+        assert_eq!(req.path, "/foo?foo=bar");
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
+    fn test_url_builder_with_encodable_chars() {
+        let url = Url::parse("https://example.com/ñoo?foo=año").unwrap();
+        let req = RequestBuilder::from_url("GET", &url).unwrap().request();
+
+        assert_eq!(req.path, "/%C3%B1oo?foo=a%C3%B1o");
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
+    fn test_url_builder_with_empty_query() {
+        let url = Url::parse("https://example.com/foo?").unwrap();
+        let req = RequestBuilder::from_url("GET", &url).unwrap().request();
+
+        assert_eq!(req.path, "/foo?");
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
+    fn test_url_builder_with_username_passwordk() {
+        let url = Url::parse("https://a:b@example.com/foo?x=y").unwrap();
+        let req = RequestBuilder::from_url("GET", &url).unwrap().request();
+
+        assert_eq!(req.path, "/foo?x=y");
         assert_eq!(req.host, "example.com");
         assert_eq!(req.port, 443); // default for https
     }
