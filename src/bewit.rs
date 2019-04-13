@@ -113,12 +113,11 @@ impl<'a> FromStr for Bewit<'a> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "use_ring", feature = "use_openssl")))]
 mod test {
     use super::*;
     use crate::credentials::Key;
     use crate::mac::{Mac, MacType};
-    use ring::digest;
     use std::str::FromStr;
 
     fn make_mac() -> Mac {
@@ -127,8 +126,8 @@ mod test {
                 11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184, 120, 197, 75,
                 152, 201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232,
             ],
-            &digest::SHA256,
-        );
+            crate::DigestAlgorithm::Sha256,
+        ).unwrap();
         Mac::new(
             MacType::Header,
             &key,

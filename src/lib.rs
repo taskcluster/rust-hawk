@@ -17,10 +17,10 @@
 //!     // provide the Hawk id and key
 //!     let credentials = Credentials {
 //!         id: "test-client".to_string(),
-//!         key: Key::new(vec![99u8; 32], &SHA256),
+//!         key: Key::new(vec![99u8; 32], SHA256).unwrap(),
 //!     };
 //!
-//!     let payload_hash = PayloadHasher::hash("text/plain", &SHA256, "request-body");
+//!     let payload_hash = PayloadHasher::hash("text/plain", SHA256, "request-body").unwrap();
 //!
 //!     // provide the details of the request to be authorized
 //!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
@@ -68,7 +68,7 @@
 //!        .hash(&hash[..])
 //!        .request();
 //!
-//!    let key = Key::new(vec![99u8; 32], &SHA256);
+//!    let key = Key::new(vec![99u8; 32], SHA256).unwrap();
 //!    let one_week_in_secs = 7 * 24 * 60 * 60;
 //!    if !request.validate_header(&hdr, &key, Duration::from_secs(5200 * one_week_in_secs)) {
 //!        panic!("header validation failed. Is it 2117 already?");
@@ -83,7 +83,7 @@ mod header;
 pub use crate::header::Header;
 
 mod credentials;
-pub use crate::credentials::{Credentials, Key};
+pub use crate::credentials::{Credentials, Key, DigestAlgorithm};
 
 mod request;
 pub use crate::request::{Request, RequestBuilder};
@@ -102,5 +102,8 @@ pub use crate::bewit::Bewit;
 
 pub mod mac;
 
-// convenience imports
-pub use ring::digest::{SHA256, SHA384, SHA512};
+pub mod crypto;
+
+pub const SHA256: DigestAlgorithm = DigestAlgorithm::Sha256;
+pub const SHA384: DigestAlgorithm = DigestAlgorithm::Sha384;
+pub const SHA512: DigestAlgorithm = DigestAlgorithm::Sha512;
