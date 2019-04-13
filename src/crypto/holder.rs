@@ -40,6 +40,7 @@ fn autoinit_crypto() {
 #[cfg(feature = "use_openssl")]
 #[inline]
 fn autoinit_crypto() {
+    let _ = set_cryptographer(&super::openssl::OpensslCryptographer);
 }
 
 #[cfg(not(any(feature = "use_openssl", feature = "use_ring")))]
