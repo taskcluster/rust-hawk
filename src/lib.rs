@@ -74,7 +74,21 @@
 //!        panic!("header validation failed. Is it 2117 already?");
 //!    }
 //! }
-
+//!
+//! ## Features
+//!
+//! By default, the `use_ring` feature is enabled, which means that this crate will
+//! use `ring` for all cryptographic operations.
+//!
+//! Alternatively, one can configure the crate with the `use_openssl`
+//! feature to use the `openssl` crate.
+//!
+//! If no features are enabled, you must provide a custom implementation of the
+//! [`hawk::crypto::Cryptographer`] trait to the `set_cryptographer` function, or
+//! the cryptographic operations will panic.
+//!
+//! Attempting to configure both the `use_ring` and `use_openssl` features will
+//! result in a build error.
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;

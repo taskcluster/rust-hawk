@@ -28,7 +28,7 @@ pub fn set_cryptographer(c: &'static dyn Cryptographer) -> Result<(), SetCryptog
 
 pub(crate) fn get_crypographer() -> &'static dyn Cryptographer {
     autoinit_crypto();
-    CRYPTOGRAPHER.get().map(|d| *d).expect("`hawk` cryptographer not initialized!")
+    *CRYPTOGRAPHER.get().expect("`hawk` cryptographer not initialized!")
 }
 
 #[cfg(feature = "use_ring")]

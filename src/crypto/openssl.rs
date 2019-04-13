@@ -22,7 +22,7 @@ struct OpensslHmacKey {
 
 impl HmacKey for OpensslHmacKey {
     fn sign(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let mut hmac_signer = Signer::new(self.digest.clone(), &self.key)?;
+        let mut hmac_signer = Signer::new(self.digest, &self.key)?;
         hmac_signer.update(&data)?;
         let digest = hmac_signer.sign_to_vec()?;
         let mut mac = vec![0; self.digest.size()];

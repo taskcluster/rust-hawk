@@ -23,8 +23,9 @@ tasks:
           git checkout {{event.head.sha}} &&
           echo $PATH &&
           rustup run stable cargo test &&
-          rustup run nightly cargo test &&
-          rustup run nightly cargo clippy -- -D clippy
+          rustup run stable cargo test --features="use_openssl" --no-default-features &&
+          rustup run nightly cargo clippy -- -D clippy &&
+          rustup run nightly cargo clippy --features="use_openssl" -- -D clippy
     metadata:
       name: Tests
       description: Run `cargo test`

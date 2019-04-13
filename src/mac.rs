@@ -41,7 +41,7 @@ impl Mac {
             6 + 1 + // Longer than 6 bytes of port seems very unlikely
             path.len() + 1 +
             hash.map_or(0, |h| h.len() * 4 / 3) + 1 +
-            ext.map_or(0, |e| e.len()) + 1,
+            ext.map_or(0, str::len) + 1,
         );
 
         writeln!(
