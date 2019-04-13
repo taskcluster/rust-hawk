@@ -32,6 +32,8 @@ pub enum Error {
 
 #[derive(Fail, Debug, PartialEq)]
 pub enum InvalidBewit {
+    #[fail(display = "Multiple bewits in URL")]
+    Multiple,
     #[fail(display = "Invalid bewit format")]
     Format,
     #[fail(display = "Invalid bewit id")]

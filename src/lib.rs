@@ -38,6 +38,26 @@
 //! }
 //! ```
 //!
+//! A client that wishes to use a bewit (URL parameter) can do so as follows:
+//!
+//! ```
+//! use hawk::{RequestBuilder, Credentials, Key, SHA256, Bewit};
+//! use std::time::Duration;
+//! use std::borrow::Cow;
+//!
+//! let credentials = Credentials {
+//!     id: "me".to_string(),
+//!     key: Key::new("tok", SHA256).unwrap(),
+//! };
+//!
+//! let client_req = RequestBuilder::new("GET", "mysite.com", 443, "/resource").request();
+//! let client_bewit = client_req
+//!     .make_bewit_with_ttl(&credentials, Duration::from_secs(10))
+//!     .unwrap();
+//! let request_path = format!("/resource?bewit={}", client_bewit.to_str());
+//! // .. make the request
+//! ```
+//!
 //! ## Hawk Server
 //!
 //! To act as a server, parse the Hawk Authorization header from the request, generate a new
@@ -74,6 +94,34 @@
 //!        panic!("header validation failed. Is it 2117 already?");
 //!    }
 //! }
+//! ```
+//!
+//! A server which validates bewits looks like this:
+//!
+//! ```
+//! use hawk::{RequestBuilder, Credentials, Key, SHA256, Bewit};
+//! use std::time::Duration;
+//! use std::borrow::Cow;
+//!
+//! let credentials = Credentials {
+//!     id: "me".to_string(),
+//!     key: Key::new("tok", SHA256).unwrap(),
+//! };
+//!
+//! // simulate the client generation of a bewit
+//! let client_req = RequestBuilder::new("GET", "mysite.com", 443, "/resource").request();
+//! let client_bewit = client_req
+//!     .make_bewit_with_ttl(&credentials, Duration::from_secs(10))
+//!     .unwrap();
+//! let request_path = format!("/resource?bewit={}", client_bewit.to_str());
+//!
+//! let mut path = Cow::Owned(request_path);
+//! let maybe_bewit = Bewit::from_path(&mut path).expect("bewit parsing failed");
+//! let server_req = RequestBuilder::new("GET", "mysite.com", 443, path.as_ref()).request();
+//! let bewit = maybe_bewit.expect("no bewit in request_path");
+//! assert_eq!(bewit.id(), "me");
+//! assert!(server_req.validate_bewit(&bewit, &credentials.key));
+//! ```
 //!
 //! ## Features
 //!
@@ -89,6 +137,7 @@
 //!
 //! Attempting to configure both the `use_ring` and `use_openssl` features will
 //! result in a build error.
+
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
