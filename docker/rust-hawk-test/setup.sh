@@ -20,13 +20,11 @@ chmod +x rustup-init
 ./rustup-init -y --no-modify-path
 
 # install stable
-/root/.cargo/bin/rustup install stable
+/root/.cargo/bin/rustup install 1.34.0
+/root/.cargo/bin/rustup component add clippy
+/root/.cargo/bin/rustup component add rustfmt
 
-# install nightly + clippy
-/root/.cargo/bin/rustup install nightly
-/root/.cargo/bin/rustup component add --toolchain nightly clippy-preview
-
-# install node
+# install node (the version is not critical)
 curl https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz | xz -d | tar -C /usr --strip=1 -xf -
 
 # cleanup

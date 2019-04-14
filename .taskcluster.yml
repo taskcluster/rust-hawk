@@ -12,7 +12,7 @@ tasks:
           - pull_request.synchronize
     payload:
       maxRunTime: 3600
-      image: djmitche/rust-hawk-test:3.0.0@sha256:f7ada4debbf1b6c0dbbb5f5c27783ebdf7660d7714378e78478d27e0489f300e
+      image: djmitche/rust-hawk-test:1.35.0@sha256:b4d60deff348ed8091fd1e431ac7d497aa6881b7fcbee56bf6272cb540f4b35a
       command:
         - /bin/bash
         - '-c'
@@ -21,14 +21,11 @@ tasks:
           cd repo &&
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
-          echo $PATH &&
-          rustup run stable cargo test &&
-          rustup run stable cargo test --features="use_openssl" --no-default-features &&
-          rustup run nightly cargo clippy -- -D clippy &&
-          rustup run nightly cargo clippy --features="use_openssl" -- -D clippy
+          cargo test --features="use_ring" --no-default-features &&
+          cargo test --features="use_openssl" --no-default-features &&
+          cargo clippy
     metadata:
       name: Tests
-      description: Run `cargo test`
+      description: Run tests
       owner: '{{ event.head.user.email }}'
       source: '{{ event.head.repo.url }}'
-

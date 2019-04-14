@@ -2,4 +2,4 @@
 
 set -e
 
-docker build -t djmitche/rust-hawk-test:3.0.0 rust-hawk-test
+docker build -t djmitche/rust-hawk-test:1.34.0 rust-hawk-test
