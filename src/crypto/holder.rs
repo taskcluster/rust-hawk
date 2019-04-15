@@ -12,6 +12,7 @@ pub struct SetCryptographerError(());
 ///
 /// This is a convenience wrapper over [`set_cryptographer`],
 /// but takes a `Box<dyn Cryptographer>` instead.
+#[cfg(not(any(feature = "use_ring", feature = "use_openssl")))]
 pub fn set_boxed_cryptographer(c: Box<dyn Cryptographer>) -> Result<(), SetCryptographerError> {
     set_cryptographer(Box::leak(c))
 }

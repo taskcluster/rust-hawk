@@ -19,6 +19,7 @@ mod ring;
 #[cfg(feature = "use_openssl")]
 mod openssl;
 
+#[cfg(not(any(feature = "use_ring", feature = "use_openssl")))]
 pub use self::holder::{set_cryptographer, set_boxed_cryptographer};
 
 
