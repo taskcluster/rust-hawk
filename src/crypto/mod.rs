@@ -49,12 +49,12 @@ pub trait Cryptographer: Send + Sync + 'static {
 }
 
 /// Type-erased hmac key type.
-pub trait HmacKey {
+pub trait HmacKey: Send + Sync + 'static {
     fn sign(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
 }
 
 /// Type-erased hash context type.
-pub trait Hasher {
+pub trait Hasher: Send + Sync + 'static {
     fn update(&mut self, data: &[u8]) -> Result<(), CryptoError>;
     // Note: this would take by move but that's not object safe :(
     fn finish(&mut self) -> Result<Vec<u8>, CryptoError>;
