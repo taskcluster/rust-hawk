@@ -7,7 +7,7 @@ use crate::response::ResponseBuilder;
 use rand::prelude::*;
 use std::str;
 use std::time::{Duration, SystemTime};
-use url::Url;
+use url::{Position, Url};
 
 /// Request represents a single HTTP request.
 ///
@@ -373,15 +373,7 @@ impl<'a> RequestBuilder<'a> {
         let port = url
             .port_or_known_default()
             .ok_or_else(|| Error::InvalidUrl(format!("url {} has no port", url)))?;
-        let path = if let Some(ref query) = url.query() {
-            // Url does not have a `uri` method that returns the combined path and
-            // query, so we simulate it here
-            let url_str = url.as_str();
-            let offset = url_str.len() - query.len() - url.path().len() - 1;
-            &url_str[offset..]
-        } else {
-            url.path()
-        };
+        let path = &url[Position::BeforePath..];
         Ok((host, port, path))
     }
 }
