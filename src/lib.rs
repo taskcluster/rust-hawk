@@ -115,11 +115,11 @@
 //!     .unwrap();
 //! let request_path = format!("/resource?bewit={}", client_bewit.to_str());
 //!
-//! let mut path = Cow::Owned(request_path);
-//! let maybe_bewit = Bewit::from_path(&mut path).expect("bewit parsing failed");
-//! let server_req = RequestBuilder::new("GET", "mysite.com", 443, path.as_ref()).request();
-//! let bewit = maybe_bewit.expect("no bewit in request_path");
+//! let bldr = RequestBuilder::new("GET", "mysite.com", 443, &request_path);
+//! let (bldr, maybe_bewit) = bldr.extract_bewit().unwrap();
+//! let bewit = maybe_bewit.unwrap();
 //! assert_eq!(bewit.id(), "me");
+//! let server_req = bldr.request();
 //! assert!(server_req.validate_bewit(&bewit, &credentials.key));
 //! ```
 //!
