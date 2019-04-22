@@ -14,6 +14,8 @@ pub struct SetCryptographerError(());
 /// but takes a `Box<dyn Cryptographer>` instead.
 #[cfg(not(any(feature = "use_ring", feature = "use_openssl")))]
 pub fn set_boxed_cryptographer(c: Box<dyn Cryptographer>) -> Result<(), SetCryptographerError> {
+    // Just leak the Box. It wouldn't be freed as a `static` anyway, and we
+    // never allow this to be re-assigned (so it's not a meaningful memory leak).
     set_cryptographer(Box::leak(c))
 }
 
