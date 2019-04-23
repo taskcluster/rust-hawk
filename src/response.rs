@@ -183,13 +183,12 @@ impl<'a> ResponseBuilder<'a> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "use_ring", feature = "use_openssl")))]
 mod test {
     use super::ResponseBuilder;
     use crate::credentials::Key;
     use crate::header::Header;
     use crate::mac::Mac;
-    use ring::digest;
     use std::time::{Duration, UNIX_EPOCH};
 
     fn make_req_header() -> Header {
@@ -227,7 +226,7 @@ mod test {
             None,
         )
         .unwrap();
-        assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
+        assert!(resp.validate_header(&server_header, &Key::new("tok", crate::SHA256).unwrap()));
     }
 
     #[test]
@@ -253,7 +252,7 @@ mod test {
             None,
         )
         .unwrap();
-        assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
+        assert!(resp.validate_header(&server_header, &Key::new("tok", crate::SHA256).unwrap()));
     }
 
     #[test]
@@ -280,7 +279,7 @@ mod test {
             None,
         )
         .unwrap();
-        assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
+        assert!(!resp.validate_header(&server_header, &Key::new("tok", crate::SHA256).unwrap()));
     }
 
     #[test]
@@ -308,7 +307,7 @@ mod test {
             None,
         )
         .unwrap();
-        assert!(resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
+        assert!(resp.validate_header(&server_header, &Key::new("tok", crate::SHA256).unwrap()));
 
         // a different supplied hash won't match..
         let hash = vec![99, 99, 99, 99];
@@ -316,6 +315,6 @@ mod test {
             ResponseBuilder::from_request_header(&req_header, "POST", "localhost", 9988, "/a/b")
                 .hash(&hash[..])
                 .response();
-        assert!(!resp.validate_header(&server_header, &Key::new("tok", &digest::SHA256)));
+        assert!(!resp.validate_header(&server_header, &Key::new("tok", crate::SHA256).unwrap()));
     }
 }

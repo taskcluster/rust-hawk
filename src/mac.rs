@@ -1,7 +1,6 @@
 use crate::credentials::Key;
 use crate::error::*;
 use base64::{display::Base64Display, STANDARD};
-use ring::constant_time;
 use std::io::Write;
 use std::ops::Deref;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -42,7 +41,7 @@ impl Mac {
             6 + 1 + // Longer than 6 bytes of port seems very unlikely
             path.len() + 1 +
             hash.map_or(0, |h| h.len() * 4 / 3) + 1 +
-            ext.map_or(0, |e| e.len()) + 1,
+            ext.map_or(0, str::len) + 1,
         );
 
         writeln!(
@@ -68,7 +67,7 @@ impl Mac {
         }
         writeln!(buffer, "{}", ext.unwrap_or_default())?;
 
-        Ok(Mac(key.sign(buffer.as_ref())))
+        Ok(Mac(key.sign(buffer.as_ref())?))
     }
 }
 
@@ -94,15 +93,14 @@ impl Deref for Mac {
 
 impl PartialEq for Mac {
     fn eq(&self, other: &Mac) -> bool {
-        constant_time::verify_slices_are_equal(&self.0[..], &other.0[..]).is_ok()
+        crate::crypto::constant_time_compare(&self.0, &other.0)
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "use_ring", feature = "use_openssl")))]
 mod test {
     use super::{Mac, MacType};
     use crate::credentials::Key;
-    use ring::digest;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     fn key() -> Key {
@@ -111,8 +109,8 @@ mod test {
                 11u8, 19, 228, 209, 79, 189, 200, 59, 166, 47, 86, 254, 235, 184, 120, 197, 75,
                 152, 201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232,
             ],
-            &digest::SHA256,
-        )
+            crate::SHA256,
+        ).unwrap()
     }
 
     fn sys_time(secs: u64, ns: u32) -> SystemTime {

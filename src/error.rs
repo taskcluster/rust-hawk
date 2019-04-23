@@ -1,4 +1,5 @@
 use failure::Fail;
+use crate::crypto::CryptoError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -25,8 +26,8 @@ pub enum Error {
     #[fail(display = "Base64 Decode error: {}", _0)]
     Decode(#[fail(cause)] base64::DecodeError),
 
-    #[fail(display = "RNG error: {}", _0)]
-    Rng(#[fail(cause)] rand::Error),
+    #[fail(display = "Crypto error: {}", _0)]
+    Crypto(#[fail(cause)] CryptoError),
 }
 
 #[derive(Fail, Debug, PartialEq)]
@@ -57,9 +58,9 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<rand::Error> for Error {
-    fn from(e: rand::Error) -> Self {
-        Error::Rng(e)
+impl From<CryptoError> for Error {
+    fn from(e: CryptoError) -> Self {
+        Error::Crypto(e)
     }
 }
 

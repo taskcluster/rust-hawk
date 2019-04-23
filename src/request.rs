@@ -4,7 +4,6 @@ use crate::error::*;
 use crate::header::Header;
 use crate::mac::{Mac, MacType};
 use crate::response::ResponseBuilder;
-use rand::prelude::*;
 use std::str;
 use std::time::{Duration, SystemTime};
 use url::Url;
@@ -389,18 +388,16 @@ impl<'a> RequestBuilder<'a> {
 /// Create a random string with `bytes` bytes of entropy.  The string
 /// is base64-encoded. so it will be longer than bytes characters.
 fn random_string(bytes: usize) -> Result<String> {
-    let mut rng = thread_rng();
     let mut bytes = vec![0u8; bytes];
-    rng.try_fill_bytes(&mut bytes)?;
+    crate::crypto::rand_bytes(&mut bytes)?;
     Ok(base64::encode(&bytes))
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "use_ring", feature = "use_openssl")))]
 mod test {
     use super::*;
     use crate::credentials::{Credentials, Key};
     use crate::header::Header;
-    use ring::digest;
     use std::str::FromStr;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
     use url::Url;
@@ -510,7 +507,7 @@ mod test {
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo").request();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new(vec![99u8; 32], &digest::SHA256),
+            key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
         let header = req
             .make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
@@ -544,7 +541,7 @@ mod test {
             .request();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new(vec![99u8; 32], &digest::SHA256),
+            key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
         let header = req
             .make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
@@ -572,7 +569,7 @@ mod test {
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo").request();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new(vec![99u8; 32], &digest::SHA256),
+            key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
         let header = req
             .make_header_full(&credentials, SystemTime::now(), "nonny")
@@ -588,7 +585,7 @@ mod test {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
+            key: Key::new("tok", crate::SHA256).unwrap(),
         };
         let req =
             RequestBuilder::new("GET", "pulse.taskcluster.net", 443, "/v1/namespaces").request();
@@ -606,7 +603,7 @@ mod test {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new("WRONG", &digest::SHA256),
+            key: Key::new("WRONG", crate::SHA256).unwrap(),
         };
         let req =
             RequestBuilder::new("GET", "pulse.taskcluster.net", 443, "/v1/namespaces").request();
@@ -622,7 +619,7 @@ mod test {
         let header = Header::from_str(REAL_HEADER).unwrap();
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
+            key: Key::new("tok", crate::SHA256).unwrap(),
         };
         let req = RequestBuilder::new("GET", "pulse.taskcluster.net", 443, "WRONG PATH").request();
         assert!(!req.validate_header(
@@ -672,7 +669,7 @@ mod test {
         let req = RequestBuilder::new("", "", 0, "").request();
         assert!(req.validate_header(
             &header,
-            &Key::new("tok", &digest::SHA256),
+            &Key::new("tok", crate::SHA256).unwrap(),
             Duration::from_secs(1000 * ONE_YEAR_IN_SECS)
         ));
     }
@@ -683,7 +680,7 @@ mod test {
         let req = RequestBuilder::new("", "", 0, "").request();
         assert!(req.validate_header(
             &header,
-            &Key::new("tok", &digest::SHA256),
+            &Key::new("tok", crate::SHA256).unwrap(),
             Duration::from_secs(1000 * ONE_YEAR_IN_SECS)
         ));
     }
@@ -697,7 +694,7 @@ mod test {
             .request();
         assert!(!req.validate_header(
             &header,
-            &Key::new("tok", &digest::SHA256),
+            &Key::new("tok", crate::SHA256).unwrap(),
             Duration::from_secs(1000 * ONE_YEAR_IN_SECS)
         ));
     }
@@ -711,7 +708,7 @@ mod test {
             .request();
         assert!(req.validate_header(
             &header,
-            &Key::new("tok", &digest::SHA256),
+            &Key::new("tok", crate::SHA256).unwrap(),
             Duration::from_secs(1000 * ONE_YEAR_IN_SECS)
         ));
 
@@ -722,7 +719,7 @@ mod test {
             .request();
         assert!(!req.validate_header(
             &header,
-            &Key::new("tok", &digest::SHA256),
+            &Key::new("tok", crate::SHA256).unwrap(),
             Duration::from_secs(1000 * ONE_YEAR_IN_SECS)
         ));
     }
@@ -730,7 +727,7 @@ mod test {
     fn round_trip_bewit(req: Request, ts: SystemTime, expected: bool) {
         let credentials = Credentials {
             id: "me".to_string(),
-            key: Key::new("tok", &digest::SHA256),
+            key: Key::new("tok", crate::SHA256).unwrap(),
         };
 
         let bewit = req.make_bewit(&credentials, ts).unwrap();

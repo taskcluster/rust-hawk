@@ -17,10 +17,10 @@
 //!     // provide the Hawk id and key
 //!     let credentials = Credentials {
 //!         id: "test-client".to_string(),
-//!         key: Key::new(vec![99u8; 32], &SHA256),
+//!         key: Key::new(vec![99u8; 32], SHA256).unwrap(),
 //!     };
 //!
-//!     let payload_hash = PayloadHasher::hash("text/plain", &SHA256, "request-body");
+//!     let payload_hash = PayloadHasher::hash("text/plain", SHA256, "request-body").unwrap();
 //!
 //!     // provide the details of the request to be authorized
 //!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
@@ -47,7 +47,7 @@
 //!
 //! let credentials = Credentials {
 //!     id: "me".to_string(),
-//!     key: Key::new("tok", &SHA256),
+//!     key: Key::new("tok", SHA256).unwrap(),
 //! };
 //!
 //! let client_req = RequestBuilder::new("GET", "mysite.com", 443, "/resource").request();
@@ -88,7 +88,7 @@
 //!        .hash(&hash[..])
 //!        .request();
 //!
-//!    let key = Key::new(vec![99u8; 32], &SHA256);
+//!    let key = Key::new(vec![99u8; 32], SHA256).unwrap();
 //!    let one_week_in_secs = 7 * 24 * 60 * 60;
 //!    if !request.validate_header(&hdr, &key, Duration::from_secs(5200 * one_week_in_secs)) {
 //!        panic!("header validation failed. Is it 2117 already?");
@@ -105,7 +105,7 @@
 //!
 //! let credentials = Credentials {
 //!     id: "me".to_string(),
-//!     key: Key::new("tok", &SHA256),
+//!     key: Key::new("tok", SHA256).unwrap(),
 //! };
 //!
 //! // simulate the client generation of a bewit
@@ -122,6 +122,21 @@
 //! assert_eq!(bewit.id(), "me");
 //! assert!(server_req.validate_bewit(&bewit, &credentials.key));
 //! ```
+//!
+//! ## Features
+//!
+//! By default, the `use_ring` feature is enabled, which means that this crate will
+//! use `ring` for all cryptographic operations.
+//!
+//! Alternatively, one can configure the crate with the `use_openssl`
+//! feature to use the `openssl` crate.
+//!
+//! If no features are enabled, you must provide a custom implementation of the
+//! [`hawk::crypto::Cryptographer`] trait to the `set_cryptographer` function, or
+//! the cryptographic operations will panic.
+//!
+//! Attempting to configure both the `use_ring` and `use_openssl` features will
+//! result in a build error.
 
 #[cfg(test)]
 #[macro_use]
@@ -131,7 +146,7 @@ mod header;
 pub use crate::header::Header;
 
 mod credentials;
-pub use crate::credentials::{Credentials, Key};
+pub use crate::credentials::{Credentials, Key, DigestAlgorithm};
 
 mod request;
 pub use crate::request::{Request, RequestBuilder};
@@ -150,5 +165,8 @@ pub use crate::bewit::Bewit;
 
 pub mod mac;
 
-// convenience imports
-pub use ring::digest::{SHA256, SHA384, SHA512};
+pub mod crypto;
+
+pub const SHA256: DigestAlgorithm = DigestAlgorithm::Sha256;
+pub const SHA384: DigestAlgorithm = DigestAlgorithm::Sha384;
+pub const SHA512: DigestAlgorithm = DigestAlgorithm::Sha512;
