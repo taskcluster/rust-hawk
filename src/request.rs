@@ -634,6 +634,49 @@ mod test {
     }
 
     #[test]
+    fn test_url_builder_with_bewit_percent_encoding() {
+        // Note that this *over*-encodes things.  Perfectly legal, but the kind
+        // of thing that incautious libraries can sometimes fail to reproduce,
+        // causing Hawk validation failures
+        let url = Url::parse(&format!(
+            "https://example.com/foo?%66oo=1&bewit={}&%62ar=2",
+            BEWIT_STR
+        ))
+        .unwrap();
+        let bldr = RequestBuilder::from_url("GET", &url).unwrap();
+
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
+        assert_eq!(bewit, Some(Bewit::from_str(BEWIT_STR).unwrap()));
+
+        let req = bldr.request();
+
+        assert_eq!(req.path, "/foo?%66oo=1&%62ar=2");
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
+    fn test_url_builder_with_xxxbewit() {
+        // check that we're not doing a simple string search for "bewit=.."
+        let url = Url::parse(&format!(
+            "https://example.com/foo?a=1&xxxbewit={}&b=2",
+            BEWIT_STR
+        ))
+        .unwrap();
+        let bldr = RequestBuilder::from_url("GET", &url).unwrap();
+
+        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        assert_eq!(bewit, None);
+
+        let req = bldr.request();
+
+        assert_eq!(req.path, format!("/foo?a=1&xxxbewit={}&b=2", BEWIT_STR));
+        assert_eq!(req.host, "example.com");
+        assert_eq!(req.port, 443); // default for https
+    }
+
+    #[test]
     fn test_url_builder_with_username_password() {
         let url = Url::parse("https://a:b@example.com/foo?x=y").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
