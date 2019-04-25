@@ -367,14 +367,15 @@ impl<'a> RequestBuilder<'a> {
         self.0
     }
 
-    /// Extract the `bewit` query parameter, if any, from the path, and return it.  If the path
-    /// contains no bewit, the RequestBuilder is returned unchanged.  If the path contains an
-    /// invalid bewit, or multiple bewit parameters, the result is an Err.
+    /// Extract the `bewit` query parameter, if any, from the path, and return it in the output
+    /// parameter, returning a modified RequestBuilder omitting the `bewit=..` query parameter.  If
+    /// no bewit is present, or if an error is returned, the output parameter is reset to None.
     ///
     /// The path manipulation is tested to correspond to that preformed by the hueniverse/hawk
     /// implementation-specification
-    pub fn extract_bewit(mut self) -> Result<(Self, Option<Bewit<'a>>)> {
+    pub fn extract_bewit(mut self, bewit: &mut Option<Bewit<'a>>) -> Result<Self> {
         const PREFIX: &str = "bewit=";
+        *bewit = None;
 
         if let Some(query_index) = self.0.path.find('?') {
             let (bewit_components, components): (Vec<&str>, Vec<&str>) = self.0.path
@@ -384,7 +385,7 @@ impl<'a> RequestBuilder<'a> {
 
             if bewit_components.len() == 1 {
                 let bewit_str = bewit_components[0];
-                let bewit = Bewit::from_str(&bewit_str[PREFIX.len()..])?;
+                *bewit = Some(Bewit::from_str(&bewit_str[PREFIX.len()..])?);
 
                 // update the path to omit the bewit=... segment
                 let new_path = if !components.is_empty() {
@@ -394,14 +395,14 @@ impl<'a> RequestBuilder<'a> {
                     self.0.path[..query_index].to_string()
                 };
                 self.0.path = Cow::Owned(new_path);
-                Ok((self, Some(bewit)))
+                Ok(self)
             } else if bewit_components.is_empty() {
-                Ok((self, None))
+                Ok(self)
             } else {
                 Err(InvalidBewit::Multiple.into())
             }
         } else {
-            Ok((self, None))
+            Ok(self)
         }
     }
 
@@ -448,6 +449,11 @@ mod test {
                                        mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
     const BEWIT_STR: &str =
         "bWVcMTM1MzgzMjgzNFxmaXk0ZTV3QmRhcEROeEhIZUExOE5yU3JVMVUzaVM2NmdtMFhqVEpwWXlVPVw";
+
+    // this is used as the initial bewit when calling extract_bewit, to verify that it is
+    // not allowing the original value of the parameter to remain in place.
+    const INITIAL_BEWIT_STR: &str =
+        "T0ggTk9FU1wxMzUzODMyODM0XGZpeTRlNXdCZGFwRE54SEhlQTE4TnJTclUxVTNpUzY2Z20wWGpUSnBZeVU9XCZtdXQgYmV3aXQgbm90IHJlc2V0IQ";
 
     #[test]
     fn test_empty() {
@@ -509,7 +515,8 @@ mod test {
         let url = Url::parse("https://example.com/foo?foo=bar").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, None);
 
         let req = bldr.request();
@@ -524,7 +531,8 @@ mod test {
         let url = Url::parse("https://example.com/ñoo?foo=año").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, None);
 
         let req = bldr.request();
@@ -539,7 +547,8 @@ mod test {
         let url = Url::parse("https://example.com/foo?").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, None);
 
         let req = bldr.request();
@@ -554,7 +563,8 @@ mod test {
         let url = Url::parse(&format!("https://example.com/foo?bewit={}", BEWIT_STR)).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, Some(Bewit::from_str(BEWIT_STR).unwrap()));
 
         let req = bldr.request();
@@ -569,7 +579,8 @@ mod test {
         let url = Url::parse(&format!("https://example.com/foo?bewit={}&a=1", BEWIT_STR)).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, Some(Bewit::from_str(BEWIT_STR).unwrap()));
 
         let req = bldr.request();
@@ -588,7 +599,9 @@ mod test {
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        assert!(bldr.extract_bewit().is_err());
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        assert!(bldr.extract_bewit(&mut bewit).is_err());
+        assert_eq!(bewit, None);
     }
 
     #[test]
@@ -596,7 +609,9 @@ mod test {
         let url = Url::parse("https://example.com/foo?bewit=1234").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        assert!(bldr.extract_bewit().is_err());
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        assert!(bldr.extract_bewit(&mut bewit).is_err());
+        assert_eq!(bewit, None);
     }
 
     #[test]
@@ -604,7 +619,8 @@ mod test {
         let url = Url::parse(&format!("https://example.com/foo?a=1&bewit={}", BEWIT_STR)).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, Some(Bewit::from_str(BEWIT_STR).unwrap()));
 
         let req = bldr.request();
@@ -623,7 +639,8 @@ mod test {
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, Some(Bewit::from_str(BEWIT_STR).unwrap()));
 
         let req = bldr.request();
@@ -666,7 +683,8 @@ mod test {
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, None);
 
         let req = bldr.request();
@@ -681,7 +699,8 @@ mod test {
         let url = Url::parse("https://a:b@example.com/foo?x=y").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
-        let (bldr, bewit) = bldr.extract_bewit().unwrap();
+        let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
+        let bldr = bldr.extract_bewit(&mut bewit).unwrap();
         assert_eq!(bewit, None);
 
         let req = bldr.request();

@@ -115,11 +115,12 @@
 //!     .unwrap();
 //! let request_path = format!("/resource?bewit={}", client_bewit.to_str());
 //!
-//! let bldr = RequestBuilder::new("GET", "mysite.com", 443, &request_path);
-//! let (bldr, maybe_bewit) = bldr.extract_bewit().unwrap();
+//! let mut maybe_bewit = None;
+//! let server_req = RequestBuilder::new("GET", "mysite.com", 443, &request_path)
+//!     .extract_bewit(&mut maybe_bewit).unwrap()
+//!     .request();
 //! let bewit = maybe_bewit.unwrap();
 //! assert_eq!(bewit.id(), "me");
-//! let server_req = bldr.request();
 //! assert!(server_req.validate_bewit(&bewit, &credentials.key));
 //! ```
 //!
@@ -146,7 +147,7 @@ mod header;
 pub use crate::header::Header;
 
 mod credentials;
-pub use crate::credentials::{Credentials, Key, DigestAlgorithm};
+pub use crate::credentials::{Credentials, DigestAlgorithm, Key};
 
 mod request;
 pub use crate::request::{Request, RequestBuilder};
