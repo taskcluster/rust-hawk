@@ -377,28 +377,20 @@ impl<'a> RequestBuilder<'a> {
         const PREFIX: &str = "bewit=";
 
         if let Some(query_index) = self.0.path.find('?') {
-            let mut bewit_components: Vec<&str> = vec![];
-            let components: Vec<&str> = self.0.path[query_index + 1..]
+            let (bewit_components, components): (Vec<&str>, Vec<&str>) = self.0.path
+                [query_index + 1..]
                 .split('&')
-                .filter(|comp| {
-                    if comp.starts_with(PREFIX) {
-                        bewit_components.push(comp);
-                        false
-                    } else {
-                        true
-                    }
-                })
-                .collect();
+                .partition(|comp| comp.starts_with(PREFIX));
 
             if bewit_components.len() == 1 {
                 let bewit_str = bewit_components[0];
                 let bewit = Bewit::from_str(&bewit_str[PREFIX.len()..])?;
 
                 // update the path to omit the bewit=... segment
-                // TODO: join is allocating, and then format! is allocating
                 let new_path = if !components.is_empty() {
                     format!("{}{}", &self.0.path[..=query_index], components.join("&")).to_string()
                 } else {
+                    // no query left, so return the remaining path, omitting the '?'
                     self.0.path[..query_index].to_string()
                 };
                 self.0.path = Cow::Owned(new_path);
