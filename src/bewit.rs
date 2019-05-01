@@ -32,47 +32,6 @@ impl<'a> Bewit<'a> {
         }
     }
 
-    /// Extract the `bewit` query parameter, if any, from the path.  If the path contains no bewit,
-    /// the return value is `Ok(None)` and the path is not modified. If the path contains a valid
-    /// bewit, the path is modified and `Ok(Some(bewit))` returned.  If the path contains an
-    /// invalid bewit, the Result is an Err.
-    ///
-    /// The path manipulation is tested to correspond to that preformed by the hueniverse/hawk
-    /// implementation-specification)
-    pub fn from_path(path: &mut Cow<'a, str>) -> Result<Option<Bewit<'a>>> {
-        const PREFIX: &str = "bewit=";
-
-        let mut bewit_components: Vec<&str> = vec![];
-        let components: Vec<&str> = path
-            .split(|c| c == '&' || c == '?')
-            .filter(|comp| {
-                if comp.starts_with(PREFIX) {
-                    bewit_components.push(comp);
-                    false
-                } else {
-                    true
-                }
-            })
-            .collect();
-
-        if bewit_components.len() == 1 {
-            let bewit_str = bewit_components[0];
-            let bewit = Bewit::from_str(&bewit_str[PREFIX.len()..])?;
-
-            *path = Cow::Owned(if components.len() > 1 {
-                format!("{}?{}", components[0], components[1..].join("&"))
-            } else {
-                components[0].to_string()
-            });
-
-            Ok(Some(bewit))
-        } else if bewit_components.is_empty() {
-            Ok(None)
-        } else {
-            Err(InvalidBewit::Multiple.into())
-        }
-    }
-
     /// Generate the fully-encoded string for this Bewit
     pub fn to_str(&self) -> String {
         use base64::display::Base64Display;
@@ -248,74 +207,5 @@ mod test {
         assert!(Bewit::from_str(&bewit).is_err());
         let bewit = base64::encode(&[a, slash, one, slash, a, slash, invalid1, invalid2]);
         assert!(Bewit::from_str(&bewit).is_err());
-    }
-
-    fn from_path_path_translation(path: &str, result_path: &str) {
-        let mut path = Cow::Owned(path.to_string());
-        let bewit = Bewit::from_path(&mut path).unwrap();
-        assert_eq!(path, result_path);
-        assert!(bewit.is_some());
-        if let Some(bewit) = bewit {
-            assert_eq!(bewit.id(), "me");
-            assert_eq!(bewit.exp(), UNIX_EPOCH + Duration::new(1353832834, 0));
-            assert_eq!(bewit.ext(), Some("abcd"));
-        }
-    }
-
-    #[test]
-    fn test_from_path_no_query() {
-        let mut path = Cow::Borrowed("/abc");
-        let bewit = Bewit::from_path(&mut path).unwrap();
-        assert_eq!(path, "/abc");
-        assert_eq!(bewit, None);
-    }
-
-    #[test]
-    fn test_from_path_no_bewit() {
-        let mut path = Cow::Borrowed("/abc?x=1");
-        let bewit = Bewit::from_path(&mut path).unwrap();
-        assert_eq!(path, "/abc?x=1");
-        assert_eq!(bewit, None);
-    }
-
-    #[test]
-    fn test_from_path_alone() {
-        from_path_path_translation(&format!("/abc?bewit={}", BEWIT_WITH_EXT_STR), "/abc")
-    }
-
-    #[test]
-    fn test_from_path_beginning() {
-        from_path_path_translation(
-            &format!("/abc?bewit={}&y=y", BEWIT_WITH_EXT_STR),
-            "/abc?y=y",
-        )
-    }
-
-    #[test]
-    fn test_from_path_middle() {
-        from_path_path_translation(
-            &format!("/abc?x=x&bewit={}&y=y", BEWIT_WITH_EXT_STR),
-            "/abc?x=x&y=y",
-        )
-    }
-
-    #[test]
-    fn test_from_path_end() {
-        from_path_path_translation(
-            &format!("/abc?x=x&bewit={}", BEWIT_WITH_EXT_STR),
-            "/abc?x=x",
-        )
-    }
-
-    #[test]
-    fn test_from_path_invalid_base64() {
-        let mut path = Cow::Borrowed("/abc?x=x&bewit===");
-        assert!(Bewit::from_path(&mut path).is_err());
-    }
-
-    #[test]
-    fn test_from_path_multiple_bewits() {
-        let mut path = Cow::Borrowed("/abc?bewit=x&bewit=y");
-        assert!(Bewit::from_path(&mut path).is_err());
     }
 }

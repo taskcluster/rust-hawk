@@ -115,10 +115,11 @@
 //!     .unwrap();
 //! let request_path = format!("/resource?bewit={}", client_bewit.to_str());
 //!
-//! let mut path = Cow::Owned(request_path);
-//! let maybe_bewit = Bewit::from_path(&mut path).expect("bewit parsing failed");
-//! let server_req = RequestBuilder::new("GET", "mysite.com", 443, path.as_ref()).request();
-//! let bewit = maybe_bewit.expect("no bewit in request_path");
+//! let mut maybe_bewit = None;
+//! let server_req = RequestBuilder::new("GET", "mysite.com", 443, &request_path)
+//!     .extract_bewit(&mut maybe_bewit).unwrap()
+//!     .request();
+//! let bewit = maybe_bewit.unwrap();
 //! assert_eq!(bewit.id(), "me");
 //! assert!(server_req.validate_bewit(&bewit, &credentials.key));
 //! ```
@@ -146,7 +147,7 @@ mod header;
 pub use crate::header::Header;
 
 mod credentials;
-pub use crate::credentials::{Credentials, Key, DigestAlgorithm};
+pub use crate::credentials::{Credentials, DigestAlgorithm, Key};
 
 mod request;
 pub use crate::request::{Request, RequestBuilder};
