@@ -12,7 +12,7 @@ edition = "2018"
 build = "build.rs"
 
 [dev-dependencies]
-pretty_assertions = "^0.1.2"
+pretty_assertions = "^0.6.1"
 
 [features]
 default = ["use_ring"]
