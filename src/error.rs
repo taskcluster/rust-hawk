@@ -23,6 +23,9 @@ pub enum Error {
     #[fail(display = "{}", _0)]
     Io(#[fail(cause)] std::io::Error),
 
+    #[fail(display = "{}", _0)]
+    Http(#[fail(cause)] http::Error),
+
     #[fail(display = "Base64 Decode error: {}", _0)]
     Decode(#[fail(cause)] base64::DecodeError),
 
@@ -55,6 +58,12 @@ impl From<base64::DecodeError> for Error {
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
+    }
+}
+
+impl From<http::Error> for Error {
+    fn from(e: http::Error) -> Self {
+        Error::Http(e)
     }
 }
 

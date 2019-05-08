@@ -36,7 +36,7 @@ pub struct Request<'a> {
     host: &'a str,
     port: u16,
     path: Cow<'a, str>,
-    hash: Option<&'a [u8]>,
+    hash: Option<Vec<u8>>,
     ext: Option<&'a str>,
     app: Option<&'a str>,
     dlg: Option<&'a str>,
@@ -46,47 +46,39 @@ impl<'a> Request<'a> {
     /// Create a new Header for this request, inventing a new nonce and setting the
     /// timestamp to the current time.
     pub fn make_header(&self, credentials: &Credentials) -> Result<Header> {
-        let nonce = random_string(10)?;
-        self.make_header_full(credentials, SystemTime::now(), nonce)
+        let rs = RequestState::new()?;
+        self.make_header_full(credentials, &rs)
     }
 
     /// Similar to `make_header`, but allowing specification of the timestamp
-    /// and nonce.
-    pub fn make_header_full<S>(
+    /// and nonce via RequestState.
+    pub fn make_header_full(
         &self,
         credentials: &Credentials,
-        ts: SystemTime,
-        nonce: S,
-    ) -> Result<Header>
-    where
-        S: Into<String>,
-    {
-        let nonce = nonce.into();
+        requeststate: &RequestState,
+    ) -> Result<Header> {
         let mac = Mac::new(
             MacType::Header,
             &credentials.key,
-            ts,
-            &nonce,
+            requeststate.ts,
+            &requeststate.nonce,
             self.method,
             self.host,
             self.port,
             self.path.as_ref(),
-            self.hash,
+            self.hash_ref(),
             self.ext,
         )?;
         Header::new(
             Some(credentials.id.clone()),
-            Some(ts),
-            Some(nonce),
+            Some(requeststate.ts),
+            Some(requeststate.nonce.clone()),
             Some(mac),
             match self.ext {
                 None => None,
                 Some(v) => Some(v.to_string()),
             },
-            match self.hash {
-                None => None,
-                Some(v) => Some(v.to_vec()),
-            },
+            self.hash.clone(),
             match self.app {
                 None => None,
                 Some(v) => Some(v.to_string()),
@@ -99,8 +91,6 @@ impl<'a> Request<'a> {
     }
 
     /// Make a "bewit" that can be attached to a URL to authenticate GET access.
-    ///
-    /// The ttl gives the time for which this bewit is valid, starting now.
     pub fn make_bewit(&self, credentials: &'a Credentials, exp: SystemTime) -> Result<Bewit<'a>> {
         // note that this includes `method` and `hash` even though they must always be GET and None
         // for bewits.  If they aren't, then the bewit just won't validate -- no need to catch
@@ -114,7 +104,7 @@ impl<'a> Request<'a> {
             self.host,
             self.port,
             self.path.as_ref(),
-            self.hash,
+            self.hash_ref(),
             self.ext,
         )?;
         let bewit = Bewit::new(&credentials.id, exp, mac, self.ext);
@@ -123,6 +113,8 @@ impl<'a> Request<'a> {
 
     /// Variant of `make_bewit` that takes a Duration (starting from now)
     /// instead of a SystemTime, provided for convenience.
+    ///
+    /// The ttl gives the time for which this bewit is valid, starting now.
     pub fn make_bewit_with_ttl(
         &self,
         credentials: &'a Credentials,
@@ -197,8 +189,8 @@ impl<'a> Request<'a> {
         };
 
         // ..then the hashes
-        if let Some(local_hash) = self.hash {
-            if let Some(server_hash) = header_hash {
+        if let Some(ref local_hash) = self.hash {
+            if let Some(ref server_hash) = header_hash {
                 if local_hash != server_hash {
                     return false;
                 }
@@ -237,7 +229,7 @@ impl<'a> Request<'a> {
             self.host,
             self.port,
             self.path.as_ref(),
-            self.hash,
+            self.hash_ref(),
             match bewit.ext() {
                 Some(e) => Some(e),
                 None => None,
@@ -263,15 +255,22 @@ impl<'a> Request<'a> {
     }
 
     /// Get a Response instance for a response to this request.  This is a convenience
-    /// wrapper around `Response::from_request_header`.
-    pub fn make_response_builder(&'a self, req_header: &'a Header) -> ResponseBuilder<'a> {
-        ResponseBuilder::from_request_header(
-            req_header,
+    /// wrapper around `Response::from_request_state`.
+    pub fn make_response_builder(&'a self, reqstate: &'a RequestState) -> ResponseBuilder<'a> {
+        ResponseBuilder::from_request_state(
+            reqstate,
             self.method,
             self.host,
             self.port,
             self.path.as_ref(),
         )
+    }
+
+    fn hash_ref(&self) -> Option<&[u8]> {
+        match self.hash {
+            Some(ref h) => Some(&h[..]),
+            None => None,
+        }
     }
 }
 
@@ -339,7 +338,7 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Set the content hash for the request
-    pub fn hash<H: Into<Option<&'a [u8]>>>(mut self, hash: H) -> Self {
+    pub fn hash<H: Into<Option<Vec<u8>>>>(mut self, hash: H) -> Self {
         self.0.hash = hash.into();
         self
     }
@@ -418,6 +417,25 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
+/// RequestState represents the state of a request that is maintained until the
+/// response is received and validated.  It includes a nonce and timestamp.
+#[derive(Debug, Clone)]
+pub struct RequestState {
+    pub nonce: String,
+    pub ts: SystemTime,
+}
+
+impl RequestState {
+    /// Generate a new RequestState, containing a random nonce and the current
+    /// time.
+    pub fn new() -> Result<RequestState> {
+        Ok(RequestState {
+            nonce: random_string(10)?,
+            ts: SystemTime::now(),
+        })
+    }
+}
+
 /// Create a random string with `bytes` bytes of entropy.  The string
 /// is base64-encoded. so it will be longer than bytes characters.
 fn random_string(bytes: usize) -> Result<String> {
@@ -464,7 +482,7 @@ mod test {
     fn test_builder() {
         let hash = vec![0u8];
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo")
-            .hash(Some(&hash[..]))
+            .hash(hash.clone())
             .ext("ext")
             .app("app")
             .dlg("dlg")
@@ -474,7 +492,7 @@ mod test {
         assert_eq!(req.path, "/foo");
         assert_eq!(req.host, "example.com");
         assert_eq!(req.port, 443);
-        assert_eq!(req.hash, Some(&hash[..]));
+        assert_eq!(req.hash, Some(hash));
         assert_eq!(req.ext, Some("ext"));
         assert_eq!(req.app, Some("app"));
         assert_eq!(req.dlg, Some("dlg"));
@@ -709,9 +727,11 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
-        let header = req
-            .make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
-            .unwrap();
+        let rs = RequestState {
+            ts: UNIX_EPOCH + Duration::new(1000, 100),
+            nonce: "nonny".to_string(),
+        };
+        let header = req.make_header_full(&credentials, &rs).unwrap();
         assert_eq!(
             header,
             Header {
@@ -734,7 +754,7 @@ mod test {
     fn test_make_header_full_with_optional_fields() {
         let hash = vec![0u8];
         let req = RequestBuilder::new("GET", "example.com", 443, "/foo")
-            .hash(Some(&hash[..]))
+            .hash(hash.clone())
             .ext("ext")
             .app("app")
             .dlg("dlg")
@@ -743,9 +763,11 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
-        let header = req
-            .make_header_full(&credentials, UNIX_EPOCH + Duration::new(1000, 100), "nonny")
-            .unwrap();
+        let rs = RequestState {
+            ts: UNIX_EPOCH + Duration::new(1000, 100),
+            nonce: "nonny".to_string(),
+        };
+        let header = req.make_header_full(&credentials, &rs).unwrap();
         assert_eq!(
             header,
             Header {
@@ -771,9 +793,11 @@ mod test {
             id: "me".to_string(),
             key: Key::new(vec![99u8; 32], crate::SHA256).unwrap(),
         };
-        let header = req
-            .make_header_full(&credentials, SystemTime::now(), "nonny")
-            .unwrap();
+        let rs = RequestState {
+            ts: SystemTime::now(),
+            nonce: "nonny".to_string(),
+        };
+        let header = req.make_header_full(&credentials, &rs).unwrap();
         assert!(req.validate_header(&header, &credentials.key, Duration::from_secs(1 * 60)));
     }
 
@@ -890,7 +914,7 @@ mod test {
         let header = make_header_without_hash();
         let hash = vec![1, 2, 3, 4];
         let req = RequestBuilder::new("", "", 0, "")
-            .hash(Some(&hash[..]))
+            .hash(hash.clone())
             .request();
         assert!(!req.validate_header(
             &header,
@@ -904,7 +928,7 @@ mod test {
         let header = make_header_with_hash();
         let hash = vec![1, 2, 3, 4];
         let req = RequestBuilder::new("", "", 0, "")
-            .hash(Some(&hash[..]))
+            .hash(hash.clone())
             .request();
         assert!(req.validate_header(
             &header,
@@ -915,7 +939,7 @@ mod test {
         // ..but supplying the wrong hash will cause validation to fail
         let hash = vec![99, 99, 99, 99];
         let req = RequestBuilder::new("", "", 0, "")
-            .hash(Some(&hash[..]))
+            .hash(hash.clone())
             .request();
         assert!(!req.validate_header(
             &header,

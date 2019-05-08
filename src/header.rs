@@ -1,9 +1,12 @@
 use crate::error::*;
 use crate::mac::Mac;
 use base64::display::Base64Display;
+use http::header::HeaderValue;
+use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
 /// Headers can be derived from strings using the `FromStr` trait, and formatted into a
@@ -123,11 +126,33 @@ impl Header {
         }
         Ok(())
     }
+
+    pub fn header_value(&self) -> Result<HeaderValue> {
+        // NOTE: ideally this would use TryFrom, but signatures expecting HeaderValue
+        // use ``where: HeaderValue: HttpTryFrom<V>`, and HttpTryFrom is prviate.
+        HeaderValue::from_shared(format!("Hawk {}", self).into())
+            .map_err(|e| http::Error::from(e).into())
+    }
 }
 
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_header(f)
+    }
+}
+
+impl TryFrom<&HeaderValue> for Header {
+    type Error = Error;
+    fn try_from(header: &HeaderValue) -> Result<Header> {
+        let header_str = header
+            .to_str()
+            .map_err(|_| Error::HeaderParseError(String::from("non-ascii header value")))?;
+        if &header_str[..5] != "Hawk " {
+            return Err(Error::HeaderParseError(String::from(
+                "Authorization header does not begin with `Hawk `",
+            )));
+        }
+        Ok(header_str[5..].parse()?)
     }
 }
 
@@ -241,7 +266,10 @@ impl FromStr for Header {
 #[cfg(test)]
 mod test {
     use super::Header;
+    use crate::error::*;
     use crate::mac::Mac;
+    use http::header::HeaderValue;
+    use std::convert::TryInto;
     use std::str::FromStr;
     use std::time::{Duration, UNIX_EPOCH};
 
@@ -494,5 +522,19 @@ mod test {
         println!("got: {}", s);
         let s2 = Header::from_str(&formatted).unwrap();
         assert!(s2 == s);
+    }
+
+    #[test]
+    fn try_from_headervalue_non_hawk() {
+        let hv = HeaderValue::from_static("NotHawk something");
+        let rv: Result<Header> = (&hv).try_into();
+        assert!(rv.is_err());
+    }
+
+    #[test]
+    fn try_from_headervalue() {
+        let hv = HeaderValue::from_static("Hawk id=\"abc\"");
+        let header: Header = (&hv).try_into().unwrap();
+        assert_eq!(header.id.unwrap(), "abc")
     }
 }

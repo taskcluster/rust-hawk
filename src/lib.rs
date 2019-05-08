@@ -24,7 +24,7 @@
 //!
 //!     // provide the details of the request to be authorized
 //!      let request = RequestBuilder::new("POST", "example.com", 80, "/v1/users")
-//!         .hash(&payload_hash[..])
+//!         .hash(payload_hash)
 //!         .request();
 //!
 //!     // Get the resulting header, including the calculated MAC; this involves a random
@@ -85,7 +85,7 @@
 //!    // build a request object based on what we know
 //!    let hash = vec![1, 2, 3, 4];
 //!    let request = RequestBuilder::new("GET", "localhost", 443, "/resource")
-//!        .hash(&hash[..])
+//!        .hash(hash)
 //!        .request();
 //!
 //!    let key = Key::new(vec![99u8; 32], SHA256).unwrap();
@@ -150,7 +150,7 @@ mod credentials;
 pub use crate::credentials::{Credentials, DigestAlgorithm, Key};
 
 mod request;
-pub use crate::request::{Request, RequestBuilder};
+pub use crate::request::{Request, RequestBuilder, RequestState};
 
 mod response;
 pub use crate::response::{Response, ResponseBuilder};
@@ -163,6 +163,9 @@ pub use crate::payload::PayloadHasher;
 
 mod bewit;
 pub use crate::bewit::Bewit;
+
+mod sign;
+pub use crate::sign::SignRequest;
 
 pub mod mac;
 

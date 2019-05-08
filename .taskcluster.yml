@@ -21,6 +21,7 @@ tasks:
           cd repo &&
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
+          ( cd tests/node; npm install ) &&
           cargo test --features="use_ring" --no-default-features &&
           cargo test --features="use_openssl" --no-default-features &&
           cargo fmt -- --check &&

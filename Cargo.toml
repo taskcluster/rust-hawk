@@ -13,6 +13,9 @@ build = "build.rs"
 
 [dev-dependencies]
 pretty_assertions = "^0.6.1"
+futures = "0.1.14"
+tokio = "0.1"
+hyper = "^0.12"
 
 [features]
 default = ["use_ring"]
@@ -27,3 +30,4 @@ url = "2.0.0"
 rand = "0.7.0"
 failure = { version = "0.1.5", features = ["derive"] }
 once_cell = "1.0.1"
+http = "0.1.17"
