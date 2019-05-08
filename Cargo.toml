@@ -26,4 +26,4 @@ openssl = { version = "0.10.20", optional = true }
 url = "1.7.2"
 rand = "0.6.5"
 failure = { version = "0.1.5", features = ["derive"] }
-once_cell = "0.1.8"
+once_cell = "0.2.0"
