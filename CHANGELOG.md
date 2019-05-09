@@ -2,6 +2,8 @@
 
 ## Unreleased Changes
 
+## v3.0.0
+
 - The cryptography library used is now configurable.
     - By default `ring` is used (the `use_ring` feature).
     - You can use the `use_openssl` feature to use openssl instead
