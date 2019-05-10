@@ -8,27 +8,28 @@
 //! Should you need something custom, then you can provide it by implementing
 //! [`Cryptographer`] and using the [`set_cryptographer`] or
 //! [`set_boxed_cryptographer`] functions.
-use failure::Fail;
 use crate::DigestAlgorithm;
+use failure::Fail;
 
 pub(crate) mod holder;
 pub(crate) use holder::get_crypographer;
 
-#[cfg(feature = "use_ring")]
-mod ring;
 #[cfg(feature = "use_openssl")]
 mod openssl;
+#[cfg(feature = "use_ring")]
+mod ring;
 
 #[cfg(not(any(feature = "use_ring", feature = "use_openssl")))]
-pub use self::holder::{set_cryptographer, set_boxed_cryptographer};
-
+pub use self::holder::{set_boxed_cryptographer, set_cryptographer};
 
 #[derive(Debug, Fail)]
 pub enum CryptoError {
-
     /// The configured cryptographer does not support the digest algorithm
     /// specified. This should only happen for custom `Cryptographer` implementations
-    #[fail(display = "Digest algorithm {:?} is unsupported by this Cryptographer", _0)]
+    #[fail(
+        display = "Digest algorithm {:?} is unsupported by this Cryptographer",
+        _0
+    )]
     UnsupportedDigest(DigestAlgorithm),
 
     /// The configured cryptographer implementation failed to perform an
@@ -43,7 +44,11 @@ pub enum CryptoError {
 /// then you do not have to worry about this.
 pub trait Cryptographer: Send + Sync + 'static {
     fn rand_bytes(&self, output: &mut [u8]) -> Result<(), CryptoError>;
-    fn new_key(&self, algorithm: DigestAlgorithm, key: &[u8]) -> Result<Box<dyn HmacKey>, CryptoError>;
+    fn new_key(
+        &self,
+        algorithm: DigestAlgorithm,
+        key: &[u8],
+    ) -> Result<Box<dyn HmacKey>, CryptoError>;
     fn new_hasher(&self, algo: DigestAlgorithm) -> Result<Box<dyn Hasher>, CryptoError>;
     fn constant_time_compare(&self, a: &[u8], b: &[u8]) -> bool;
 }
@@ -66,7 +71,10 @@ pub(crate) fn rand_bytes(buffer: &mut [u8]) -> Result<(), CryptoError> {
     get_crypographer().rand_bytes(buffer)
 }
 
-pub(crate) fn new_key(algorithm: DigestAlgorithm, key: &[u8]) -> Result<Box<dyn HmacKey>, CryptoError> {
+pub(crate) fn new_key(
+    algorithm: DigestAlgorithm,
+    key: &[u8],
+) -> Result<Box<dyn HmacKey>, CryptoError> {
     get_crypographer().new_key(algorithm, key)
 }
 

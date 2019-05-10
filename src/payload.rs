@@ -1,5 +1,5 @@
-use crate::{crypto, DigestAlgorithm};
 use crate::error::*;
+use crate::{crypto, DigestAlgorithm};
 /// A utility for hashing payloads. Feed your entity body to this, then pass the `finish`
 /// result to a request or response.
 pub struct PayloadHasher(Box<dyn crypto::Hasher>);

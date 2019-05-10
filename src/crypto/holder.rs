@@ -1,6 +1,6 @@
-use once_cell::sync::OnceCell;
-use failure::Fail;
 use super::Cryptographer;
+use failure::Fail;
+use once_cell::sync::OnceCell;
 
 static CRYPTOGRAPHER: OnceCell<&'static dyn Cryptographer> = OnceCell::INIT;
 
@@ -31,7 +31,9 @@ pub fn set_cryptographer(c: &'static dyn Cryptographer) -> Result<(), SetCryptog
 
 pub(crate) fn get_crypographer() -> &'static dyn Cryptographer {
     autoinit_crypto();
-    *CRYPTOGRAPHER.get().expect("`hawk` cryptographer not initialized!")
+    *CRYPTOGRAPHER
+        .get()
+        .expect("`hawk` cryptographer not initialized!")
 }
 
 #[cfg(feature = "use_ring")]
@@ -48,5 +50,4 @@ fn autoinit_crypto() {
 
 #[cfg(not(any(feature = "use_openssl", feature = "use_ring")))]
 #[inline]
-fn autoinit_crypto() {
-}
+fn autoinit_crypto() {}

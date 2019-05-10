@@ -110,7 +110,8 @@ mod test {
                 152, 201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232,
             ],
             crate::SHA256,
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     fn sys_time(secs: u64, ns: u32) -> SystemTime {

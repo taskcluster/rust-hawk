@@ -132,7 +132,8 @@ mod test {
                 152, 201, 79, 115, 61, 111, 242, 219, 187, 173, 14, 227, 108, 60, 232,
             ],
             crate::DigestAlgorithm::Sha256,
-        ).unwrap();
+        )
+        .unwrap();
         Mac::new(
             MacType::Header,
             &key,
