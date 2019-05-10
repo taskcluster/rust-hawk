@@ -1,8 +1,8 @@
-use super::{Cryptographer, Hasher, HmacKey, CryptoError};
-use ring::{digest, hmac};
+use super::{CryptoError, Cryptographer, Hasher, HmacKey};
 use crate::DigestAlgorithm;
-use std::convert::{TryFrom, TryInto};
 use failure::err_msg;
+use ring::{digest, hmac};
+use std::convert::{TryFrom, TryInto};
 
 impl From<ring::error::Unspecified> for CryptoError {
     // Ring's errors are entirely opaque
@@ -28,7 +28,10 @@ struct RingHasher(Option<digest::Context>);
 
 impl Hasher for RingHasher {
     fn update(&mut self, data: &[u8]) -> Result<(), CryptoError> {
-        self.0.as_mut().expect("update called after `finish`").update(data);
+        self.0
+            .as_mut()
+            .expect("update called after `finish`")
+            .update(data);
         Ok(())
     }
 
@@ -39,7 +42,6 @@ impl Hasher for RingHasher {
     }
 }
 
-
 impl Cryptographer for RingCryptographer {
     fn rand_bytes(&self, output: &mut [u8]) -> Result<(), CryptoError> {
         use ring::rand::SecureRandom;
@@ -47,7 +49,11 @@ impl Cryptographer for RingCryptographer {
         Ok(())
     }
 
-    fn new_key(&self, algorithm: DigestAlgorithm, key: &[u8]) -> Result<Box<dyn HmacKey>, CryptoError> {
+    fn new_key(
+        &self,
+        algorithm: DigestAlgorithm,
+        key: &[u8],
+    ) -> Result<Box<dyn HmacKey>, CryptoError> {
         let k = hmac::SigningKey::new(algorithm.try_into()?, key);
         Ok(Box::new(RingHmacKey(k)))
     }
@@ -73,4 +79,3 @@ impl TryFrom<DigestAlgorithm> for &'static digest::Algorithm {
         }
     }
 }
-

@@ -1,11 +1,11 @@
-use super::{Cryptographer, Hasher, HmacKey, CryptoError};
+use super::{CryptoError, Cryptographer, Hasher, HmacKey};
 use crate::DigestAlgorithm;
 use std::convert::{TryFrom, TryInto};
 
+use openssl::error::ErrorStack;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private};
 use openssl::sign::Signer;
-use openssl::error::ErrorStack;
 
 impl From<ErrorStack> for CryptoError {
     fn from(e: ErrorStack) -> Self {
@@ -36,7 +36,10 @@ struct OpensslHasher(Option<openssl::hash::Hasher>);
 
 impl Hasher for OpensslHasher {
     fn update(&mut self, data: &[u8]) -> Result<(), CryptoError> {
-        self.0.as_mut().expect("update called after `finish`").update(data)?;
+        self.0
+            .as_mut()
+            .expect("update called after `finish`")
+            .update(data)?;
         Ok(())
     }
 
@@ -47,14 +50,17 @@ impl Hasher for OpensslHasher {
     }
 }
 
-
 impl Cryptographer for OpensslCryptographer {
     fn rand_bytes(&self, output: &mut [u8]) -> Result<(), CryptoError> {
         openssl::rand::rand_bytes(output)?;
         Ok(())
     }
 
-    fn new_key(&self, algorithm: DigestAlgorithm, key: &[u8]) -> Result<Box<dyn HmacKey>, CryptoError> {
+    fn new_key(
+        &self,
+        algorithm: DigestAlgorithm,
+        key: &[u8],
+    ) -> Result<Box<dyn HmacKey>, CryptoError> {
         let digest = algorithm.try_into()?;
         Ok(Box::new(OpensslHmacKey {
             key: PKey::hmac(key)?,
@@ -90,4 +96,3 @@ impl TryFrom<DigestAlgorithm> for MessageDigest {
         }
     }
 }
-
