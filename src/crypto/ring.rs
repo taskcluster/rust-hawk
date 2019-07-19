@@ -11,14 +11,20 @@ impl From<ring::error::Unspecified> for CryptoError {
     }
 }
 
+impl From<std::convert::Infallible> for CryptoError {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
 pub struct RingCryptographer;
 
-struct RingHmacKey(hmac::SigningKey);
+struct RingHmacKey(hmac::Key);
 
 impl HmacKey for RingHmacKey {
     fn sign(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let digest = hmac::sign(&self.0, data);
-        let mut mac = vec![0; self.0.digest_algorithm().output_len];
+        let mut mac = vec![0; self.0.algorithm().digest_algorithm().output_len];
         mac.copy_from_slice(digest.as_ref());
         Ok(mac)
     }
@@ -45,7 +51,8 @@ impl Hasher for RingHasher {
 impl Cryptographer for RingCryptographer {
     fn rand_bytes(&self, output: &mut [u8]) -> Result<(), CryptoError> {
         use ring::rand::SecureRandom;
-        ring::rand::SystemRandom.fill(output)?;
+        let rnd = ring::rand::SystemRandom::new();
+        rnd.fill(output)?;
         Ok(())
     }
 
@@ -54,7 +61,7 @@ impl Cryptographer for RingCryptographer {
         algorithm: DigestAlgorithm,
         key: &[u8],
     ) -> Result<Box<dyn HmacKey>, CryptoError> {
-        let k = hmac::SigningKey::new(algorithm.try_into()?, key);
+        let k = hmac::Key::new(algorithm.try_into()?, key);
         Ok(Box::new(RingHmacKey(k)))
     }
 
@@ -75,6 +82,18 @@ impl TryFrom<DigestAlgorithm> for &'static digest::Algorithm {
             DigestAlgorithm::Sha256 => Ok(&digest::SHA256),
             DigestAlgorithm::Sha384 => Ok(&digest::SHA384),
             DigestAlgorithm::Sha512 => Ok(&digest::SHA512),
+            algo => Err(CryptoError::UnsupportedDigest(algo)),
+        }
+    }
+}
+
+impl TryFrom<DigestAlgorithm> for hmac::Algorithm {
+    type Error = CryptoError;
+    fn try_from(algorithm: DigestAlgorithm) -> Result<Self, CryptoError> {
+        match algorithm {
+            DigestAlgorithm::Sha256 => Ok(hmac::HMAC_SHA256),
+            DigestAlgorithm::Sha384 => Ok(hmac::HMAC_SHA384),
+            DigestAlgorithm::Sha512 => Ok(hmac::HMAC_SHA512),
             algo => Err(CryptoError::UnsupportedDigest(algo)),
         }
     }
