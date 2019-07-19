@@ -12,7 +12,7 @@ tasks:
           - pull_request.synchronize
     payload:
       maxRunTime: 3600
-      image: djmitche/rust-hawk-test:1.35.0@sha256:b4d60deff348ed8091fd1e431ac7d497aa6881b7fcbee56bf6272cb540f4b35a
+      image: djmitche/rust-hawk-test:1.36.0@sha256:b4040d92f34183cf218d222f90e91206ff4fc6ed94d68222fb2b2042a53373a0
       command:
         - /bin/bash
         - '-c'
