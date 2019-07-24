@@ -23,7 +23,7 @@ use_openssl = ["openssl"]
 base64 = "0.10.1"
 ring = { version = "0.16.0", optional = true }
 openssl = { version = "0.10.20", optional = true }
-url = "1.7.2"
+url = "2.0.0"
 rand = "0.7.0"
 failure = { version = "0.1.5", features = ["derive"] }
 once_cell = "0.1.8"
