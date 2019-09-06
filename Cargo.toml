@@ -27,3 +27,4 @@ url = "2.0.0"
 rand = "0.7.0"
 failure = { version = "0.1.5", features = ["derive"] }
 once_cell = "1.0.1"
+log = "0.4.8"

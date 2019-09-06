@@ -9,6 +9,7 @@ use std::str;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use url::{Position, Url};
+use log::debug;
 
 /// Request represents a single HTTP request.
 ///
@@ -149,21 +150,21 @@ impl<'a> Request<'a> {
         let ts = match header.ts {
             Some(ts) => ts,
             None => {
-                dbg!("missing timestamp from header");
+                debug!("missing timestamp from header");
                 return false;
             }
         };
         let nonce = match header.nonce {
             Some(ref nonce) => nonce,
             None => {
-                dbg!("missing nonce from header");
+                debug!("missing nonce from header");
                 return false;
             }
         };
         let header_mac = match header.mac {
             Some(ref mac) => mac,
             None => {
-                dbg!("missing mac from header");
+                debug!("missing mac from header");
                 return false;
             }
         };
@@ -191,12 +192,12 @@ impl<'a> Request<'a> {
         ) {
             Ok(calculated_mac) => {
                 if &calculated_mac != header_mac {
-                    dbg!("calculated mac doesn't match header");
+                    debug!("calculated mac doesn't match header");
                     return false;
                 }
             }
             Err(e) => {
-                dbg!("mac error: ", e);
+                debug!("unexpected mac error: {:?}", e);
                 return false;
             }
         };
@@ -205,11 +206,11 @@ impl<'a> Request<'a> {
         if let Some(local_hash) = self.hash {
             if let Some(server_hash) = header_hash {
                 if local_hash != server_hash {
-                    dbg!("server hash doesn't match header");
+                    debug!("server hash doesn't match header");
                     return false;
                 }
             } else {
-                dbg!("missing hash from header");
+                debug!("missing hash from header");
                 return false;
             }
         }
@@ -222,7 +223,7 @@ impl<'a> Request<'a> {
             ts.duration_since(now).unwrap()
         };
         if skew > ts_skew {
-            dbg!("bad timestamp skew, timestamp too old?", &skew, &ts_skew);
+            debug!("bad timestamp skew, timestamp too old? detected skew: {:?}, ts_skew: {:?}", &skew, &ts_skew);
             return false;
         }
 
@@ -606,6 +607,7 @@ mod test {
 
     #[test]
     fn test_url_builder_with_bewit_invalid() {
+
         let url = Url::parse("https://example.com/foo?bewit=1234").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
