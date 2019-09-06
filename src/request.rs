@@ -4,12 +4,12 @@ use crate::error::*;
 use crate::header::Header;
 use crate::mac::{Mac, MacType};
 use crate::response::ResponseBuilder;
+use log::debug;
 use std::borrow::Cow;
 use std::str;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use url::{Position, Url};
-use log::debug;
 
 /// Request represents a single HTTP request.
 ///
@@ -223,7 +223,10 @@ impl<'a> Request<'a> {
             ts.duration_since(now).unwrap()
         };
         if skew > ts_skew {
-            debug!("bad timestamp skew, timestamp too old? detected skew: {:?}, ts_skew: {:?}", &skew, &ts_skew);
+            debug!(
+                "bad timestamp skew, timestamp too old? detected skew: {:?}, ts_skew: {:?}",
+                &skew, &ts_skew
+            );
             return false;
         }
 
@@ -607,7 +610,6 @@ mod test {
 
     #[test]
     fn test_url_builder_with_bewit_invalid() {
-
         let url = Url::parse("https://example.com/foo?bewit=1234").unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
