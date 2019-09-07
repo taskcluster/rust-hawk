@@ -4,6 +4,7 @@ use crate::error::*;
 use crate::header::Header;
 use crate::mac::{Mac, MacType};
 use crate::response::ResponseBuilder;
+use log::debug;
 use std::borrow::Cow;
 use std::str;
 use std::str::FromStr;
@@ -149,18 +150,21 @@ impl<'a> Request<'a> {
         let ts = match header.ts {
             Some(ts) => ts,
             None => {
+                debug!("missing timestamp from header");
                 return false;
             }
         };
         let nonce = match header.nonce {
             Some(ref nonce) => nonce,
             None => {
+                debug!("missing nonce from header");
                 return false;
             }
         };
         let header_mac = match header.mac {
             Some(ref mac) => mac,
             None => {
+                debug!("missing mac from header");
                 return false;
             }
         };
@@ -188,10 +192,12 @@ impl<'a> Request<'a> {
         ) {
             Ok(calculated_mac) => {
                 if &calculated_mac != header_mac {
+                    debug!("calculated mac doesn't match header");
                     return false;
                 }
             }
-            Err(_) => {
+            Err(e) => {
+                debug!("unexpected mac error: {:?}", e);
                 return false;
             }
         };
@@ -200,9 +206,11 @@ impl<'a> Request<'a> {
         if let Some(local_hash) = self.hash {
             if let Some(server_hash) = header_hash {
                 if local_hash != server_hash {
+                    debug!("server hash doesn't match header");
                     return false;
                 }
             } else {
+                debug!("missing hash from header");
                 return false;
             }
         }
@@ -215,6 +223,10 @@ impl<'a> Request<'a> {
             ts.duration_since(now).unwrap()
         };
         if skew > ts_skew {
+            debug!(
+                "bad timestamp skew, timestamp too old? detected skew: {:?}, ts_skew: {:?}",
+                &skew, &ts_skew
+            );
             return false;
         }
 
