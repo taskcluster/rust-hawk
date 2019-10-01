@@ -1,46 +1,32 @@
-version: 1
-policy:
-  pullRequests: public
+version: 0
+allowPullRequests: public
 tasks:
-  $if: 'tasks_for in ["github-push", "github-pull-request"]'
-  then:
-    $let:
-      run:
-        $if: 'tasks_for == "github-push"'
-        then: true
-        else: {$eval: 'event.action in ["opened", "reopened", "synchronize"]'}
-      repo_url:
-        $if: 'tasks_for == "github-push"'
-        then: ${event.repository.clone_url}
-        else: ${event.pull_request.head.repo.clone_url}
-      ref:
-        $if: 'tasks_for == "github-push"'
-        then: ${event.after}
-        else: ${event.pull_request.head.sha}
-    in:
-    - $if: run
-      then:
-        provisionerId: 'proj-taskcluster'
-        workerType: 'ci'
-        deadline: {$fromNow: '1 hour'}
-        expires: {$fromNow: '1 day'}
-        payload:
-          maxRunTime: 3600
-          image: djmitche/rust-hawk-test:1.36.0@sha256:b4040d92f34183cf218d222f90e91206ff4fc6ed94d68222fb2b2042a53373a0
-          command:
-            - /bin/bash
-            - '-c'
-            - >-
-              git clone ${repo_url} repo &&
-              cd repo &&
-              git config advice.detachedHead false &&
-              git checkout ${ref} &&
-              cargo test --features="use_ring" --no-default-features &&
-              cargo test --features="use_openssl" --no-default-features &&
-              cargo fmt -- --check &&
-              cargo clippy
-        metadata:
-          name: Tests
-          description: Run tests
-          owner: nobody@mozilla.com
-          source: ${repo_url}
+  - provisionerId: '{{ taskcluster.docker.provisionerId }}'
+    workerType: '{{ taskcluster.docker.workerType }}'
+    extra:
+      github:
+        events:
+          - pull_request.opened
+          - pull_request.reopened
+          - push
+          - pull_request.synchronize
+    payload:
+      maxRunTime: 3600
+      image: djmitche/rust-hawk-test:1.36.0@sha256:b4040d92f34183cf218d222f90e91206ff4fc6ed94d68222fb2b2042a53373a0
+      command:
+        - /bin/bash
+        - '-c'
+        - >-
+          git clone {{event.head.repo.url}} repo &&
+          cd repo &&
+          git config advice.detachedHead false &&
+          git checkout {{event.head.sha}} &&
+          cargo test --features="use_ring" --no-default-features &&
+          cargo test --features="use_openssl" --no-default-features &&
+          cargo fmt -- --check &&
+          cargo clippy
+    metadata:
+      name: Tests
+      description: Run tests
+      owner: '{{ event.head.user.email }}'
+      source: '{{ event.head.repo.url }}'
