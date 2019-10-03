@@ -21,7 +21,7 @@ tasks:
     - $if: run
       then:
         provisionerId: 'proj-taskcluster'
-        workerType: 'ci'
+        workerType: 'ci2'
         deadline: {$fromNow: '1 hour'}
         expires: {$fromNow: '1 day'}
         payload:
