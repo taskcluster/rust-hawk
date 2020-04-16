@@ -1,6 +1,6 @@
 [package]
 name = "hawk"
-version = "3.1.0"
+version = "3.1.1"
 authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>", "Dustin J. Mitchell <dustin@mozilla.com>"]
 license = "MPL-2.0"
 readme = "README.md"
@@ -10,6 +10,11 @@ homepage = "https://docs.rs/hawk/"
 description = "Hawk Implementation for Rust"
 edition = "2018"
 build = "build.rs"
+exclude = [
+    "docker/*",
+    ".taskcluster.yml",
+    ".git*",
+]
 
 [dev-dependencies]
 pretty_assertions = "^0.6.1"
