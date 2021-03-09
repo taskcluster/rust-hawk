@@ -20,7 +20,7 @@ chmod +x rustup-init
 ./rustup-init -y --no-modify-path
 
 # install stable
-/root/.cargo/bin/rustup install 1.36.0
+/root/.cargo/bin/rustup install 1.50.0
 /root/.cargo/bin/rustup component add clippy
 /root/.cargo/bin/rustup component add rustfmt
 
