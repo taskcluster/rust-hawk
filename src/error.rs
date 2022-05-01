@@ -23,7 +23,7 @@ pub enum Error {
     Io(#[source] std::io::Error),
 
     #[error("Base64 Decode error: {0}")]
-    Decode(#[source] base64::DecodeError),
+    Decode(String),
 
     #[error("Crypto error: {0}")]
     Crypto(#[source] CryptoError),
@@ -47,7 +47,7 @@ pub enum InvalidBewit {
 
 impl From<base64::DecodeError> for Error {
     fn from(e: base64::DecodeError) -> Self {
-        Error::Decode(e)
+        Error::Decode(e.to_string())
     }
 }
 
