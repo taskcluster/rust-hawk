@@ -45,8 +45,10 @@ pub enum InvalidBewit {
     Ext,
 }
 
-impl From<base64::DecodeError> for Error {
-    fn from(e: base64::DecodeError) -> Self {
+impl Error {
+    // this cannot be a `From<..>` implementation as that publicly exposes the version of base64
+    // used in this crate.
+    pub(crate) fn from_base64_error(e: base64::DecodeError) -> Self {
         Error::Decode(e.to_string())
     }
 }
