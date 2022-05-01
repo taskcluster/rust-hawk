@@ -81,7 +81,7 @@ const BACKSLASH: u8 = b'\\';
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
     fn from_str(bewit: &str) -> Result<Bewit<'a>> {
-        let bewit = base64::decode(bewit).map_err(|e| Error::from_base64_error(e))?;
+        let bewit = base64::decode(bewit).map_err(Error::from_base64_error)?;
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {
