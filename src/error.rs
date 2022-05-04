@@ -23,7 +23,7 @@ pub enum Error {
     Io(#[source] std::io::Error),
 
     #[error("Base64 Decode error: {0}")]
-    Decode(#[source] base64::DecodeError),
+    Decode(String),
 
     #[error("Crypto error: {0}")]
     Crypto(#[source] CryptoError),
@@ -45,9 +45,11 @@ pub enum InvalidBewit {
     Ext,
 }
 
-impl From<base64::DecodeError> for Error {
-    fn from(e: base64::DecodeError) -> Self {
-        Error::Decode(e)
+impl Error {
+    // this cannot be a `From<..>` implementation as that publicly exposes the version of base64
+    // used in this crate.
+    pub(crate) fn from_base64_error(e: base64::DecodeError) -> Self {
+        Error::Decode(e.to_string())
     }
 }
 
