@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 
+## v4.0.0
+
+- Hide base64::DecodeError
+
 ## v3.0.0
 
 - The cryptography library used is now configurable.
@@ -31,4 +35,3 @@
       to pass `hawk::SHA256` now instead.
 
 - BREAKING (though unlikely): `Error::Rng` has been removed, and `Error::Crypto` added
-

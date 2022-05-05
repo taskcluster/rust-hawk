@@ -1,6 +1,6 @@
 [package]
 name = "hawk"
-version = "3.2.1"
+version = "4.0.0"
 authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>", "Dustin J. Mitchell <dustin@mozilla.com>"]
 license = "MPL-2.0"
 readme = "README.md"
