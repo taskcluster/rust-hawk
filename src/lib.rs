@@ -164,6 +164,8 @@ pub use crate::payload::PayloadHasher;
 mod bewit;
 pub use crate::bewit::Bewit;
 
+mod b64;
+
 pub mod mac;
 
 pub mod crypto;

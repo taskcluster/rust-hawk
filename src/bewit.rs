@@ -1,5 +1,7 @@
+use crate::b64;
 use crate::error::*;
 use crate::mac::Mac;
+use base64;
 use std::borrow::Cow;
 use std::str;
 use std::str::FromStr;
@@ -34,7 +36,6 @@ impl<'a> Bewit<'a> {
 
     /// Generate the fully-encoded string for this Bewit
     pub fn to_str(&self) -> String {
-        use base64::display::Base64Display;
         let raw = format!(
             "{}\\{}\\{}\\{}",
             self.id,
@@ -42,14 +43,14 @@ impl<'a> Bewit<'a> {
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            Base64Display::with_config(self.mac.as_ref(), base64::STANDARD),
+            base64::encode_engine(self.mac.as_ref(), &b64::STANDARD_ENGINE),
             match self.ext {
                 Some(ref cow) => cow.as_ref(),
                 None => "",
             }
         );
 
-        base64::encode_config(&raw, base64::URL_SAFE_NO_PAD)
+        base64::encode_engine(&raw, &b64::BEWIT_ENGINE)
     }
 
     /// Get the Bewit's client identifier
@@ -81,7 +82,8 @@ const BACKSLASH: u8 = b'\\';
 impl<'a> FromStr for Bewit<'a> {
     type Err = Error;
     fn from_str(bewit: &str) -> Result<Bewit<'a>> {
-        let bewit = base64::decode(bewit).map_err(Error::from_base64_error)?;
+        let bewit =
+            base64::decode_engine(bewit, &b64::BEWIT_ENGINE).map_err(Error::from_base64_error)?;
 
         let parts: Vec<&[u8]> = bewit.split(|c| *c == BACKSLASH).collect();
         if parts.len() != 4 {

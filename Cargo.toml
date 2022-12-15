@@ -25,7 +25,7 @@ use_ring = ["ring"]
 use_openssl = ["openssl"]
 
 [dependencies]
-base64 = "0.13"
+base64 = "0.20"
 ring = { version = "0.16.0", optional = true }
 openssl = { version = "0.10.20", optional = true }
 url = "2.1"
