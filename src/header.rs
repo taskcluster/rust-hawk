@@ -1,6 +1,6 @@
+use crate::b64;
 use crate::error::*;
 use crate::mac::Mac;
-use base64::display::Base64Display;
 use std::fmt;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -97,7 +97,7 @@ impl Header {
                 f,
                 "{}mac=\"{}\"",
                 sep,
-                Base64Display::with_config(mac, base64::STANDARD)
+                base64::encode_engine(mac, &b64::STANDARD_ENGINE),
             )?;
             sep = ", ";
         }
@@ -110,7 +110,7 @@ impl Header {
                 f,
                 "{}hash=\"{}\"",
                 sep,
-                Base64Display::with_config(hash, base64::STANDARD)
+                base64::encode_engine(hash, &b64::STANDARD_ENGINE),
             )?;
             sep = ", ";
         }

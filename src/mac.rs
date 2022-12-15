@@ -1,6 +1,6 @@
+use crate::b64;
 use crate::credentials::Key;
 use crate::error::*;
-use base64::{display::Base64Display, STANDARD};
 use std::io::Write;
 use std::ops::Deref;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -61,7 +61,11 @@ impl Mac {
         )?;
 
         if let Some(h) = hash {
-            writeln!(buffer, "{}", Base64Display::with_config(h, STANDARD))?;
+            writeln!(
+                buffer,
+                "{}",
+                base64::encode_engine(h, &b64::STANDARD_ENGINE),
+            )?;
         } else {
             writeln!(buffer)?;
         }
