@@ -5,12 +5,12 @@ use base64::engine::{
     DecodePaddingMode,
 };
 
-/// BEWIT_ENGINE encodes to a url-safe value with no padding.
+/// BEWIT_ENGINE encodes to a url-safe value with no padding, but indifferent to padding on decode.
 pub(crate) const BEWIT_ENGINE: FastPortable = FastPortable::from(
     &base64::alphabet::URL_SAFE,
     FastPortableConfig::new()
         .with_encode_padding(false)
-        .with_decode_padding_mode(DecodePaddingMode::RequireNone),
+        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
 );
 
 /// STANDARD_ENGINE encodes with the standard alphabet and includes padding.
