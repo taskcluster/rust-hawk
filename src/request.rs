@@ -1,9 +1,11 @@
+use crate::b64;
 use crate::bewit::Bewit;
 use crate::credentials::{Credentials, Key};
 use crate::error::*;
 use crate::header::Header;
 use crate::mac::{Mac, MacType};
 use crate::response::ResponseBuilder;
+use base64::Engine;
 use log::debug;
 use std::borrow::Cow;
 use std::str;
@@ -435,7 +437,7 @@ impl<'a> RequestBuilder<'a> {
 fn random_string(bytes: usize) -> Result<String> {
     let mut bytes = vec![0u8; bytes];
     crate::crypto::rand_bytes(&mut bytes)?;
-    Ok(base64::encode(&bytes))
+    Ok(b64::BEWIT_ENGINE.encode(&bytes))
 }
 
 #[cfg(all(test, any(feature = "use_ring", feature = "use_openssl")))]

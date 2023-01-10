@@ -1,6 +1,7 @@
 use crate::b64;
 use crate::credentials::Key;
 use crate::error::*;
+use base64::Engine;
 use std::io::Write;
 use std::ops::Deref;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -61,11 +62,7 @@ impl Mac {
         )?;
 
         if let Some(h) = hash {
-            writeln!(
-                buffer,
-                "{}",
-                base64::encode_engine(h, &b64::STANDARD_ENGINE),
-            )?;
+            writeln!(buffer, "{}", b64::STANDARD_ENGINE.encode(h),)?;
         } else {
             writeln!(buffer)?;
         }
