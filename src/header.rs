@@ -1,9 +1,11 @@
 use crate::b64;
 use crate::error::*;
 use crate::mac::Mac;
+use base64::Engine;
 use std::fmt;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 /// Representation of a Hawk `Authorization` header value (the part following "Hawk ").
 ///
 /// Headers can be derived from strings using the `FromStr` trait, and formatted into a
@@ -93,12 +95,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref mac) = self.mac {
-            write!(
-                f,
-                "{}mac=\"{}\"",
-                sep,
-                base64::encode_engine(mac, &b64::STANDARD_ENGINE),
-            )?;
+            write!(f, "{}mac=\"{}\"", sep, b64::STANDARD_ENGINE.encode(mac))?;
             sep = ", ";
         }
         if let Some(ref ext) = self.ext {
@@ -106,12 +103,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref hash) = self.hash {
-            write!(
-                f,
-                "{}hash=\"{}\"",
-                sep,
-                base64::encode_engine(hash, &b64::STANDARD_ENGINE),
-            )?;
+            write!(f, "{}hash=\"{}\"", sep, b64::STANDARD_ENGINE.encode(hash))?;
             sep = ", ";
         }
         if let Some(ref app) = self.app {
@@ -180,14 +172,14 @@ impl FromStr for Header {
                     ts = Some(UNIX_EPOCH + Duration::new(epoch, 0));
                 }
                 "mac" => {
-                    mac = Some(base64::decode(val).map_err(|_| {
+                    mac = Some(b64::STANDARD_ENGINE.decode(val).map_err(|_| {
                         Error::HeaderParseError("Error parsing `mac` field".into())
                     })?);
                 }
                 "nonce" => nonce = Some(val),
                 "ext" => ext = Some(val),
                 "hash" => {
-                    hash = Some(base64::decode(val).map_err(|_| {
+                    hash = Some(b64::STANDARD_ENGINE.decode(val).map_err(|_| {
                         Error::HeaderParseError("Error parsing `hash` field".into())
                     })?);
                 }
