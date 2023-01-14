@@ -27,7 +27,6 @@ pub struct Response<'a> {
 impl<'a> Response<'a> {
     /// Create a new Header for this response, based on the given request and request header
     pub fn make_header(&self, key: &Key) -> Result<Header> {
-        
         let ts = self.req_header.ts.ok_or(Error::MissingTs)?;
         let nonce = self.req_header.nonce.as_ref().ok_or(Error::MissingNonce)?;
         let mac = Mac::new(
