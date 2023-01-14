@@ -78,7 +78,7 @@ impl Header {
     pub fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut sep = "";
         if let Some(ref id) = self.id {
-            write!(f, "{}id=\"{}\"", sep, id)?;
+            write!(f, "{sep}id=\"{id}\"")?;
             sep = ", ";
         }
         if let Some(ref ts) = self.ts {
@@ -91,7 +91,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref nonce) = self.nonce {
-            write!(f, "{}nonce=\"{}\"", sep, nonce)?;
+            write!(f, "{sep}nonce=\"{nonce}\"")?;
             sep = ", ";
         }
         if let Some(ref mac) = self.mac {
@@ -99,7 +99,7 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref ext) = self.ext {
-            write!(f, "{}ext=\"{}\"", sep, ext)?;
+            write!(f, "{sep}ext=\"{ext}\"")?;
             sep = ", ";
         }
         if let Some(ref hash) = self.hash {
@@ -107,11 +107,11 @@ impl Header {
             sep = ", ";
         }
         if let Some(ref app) = self.app {
-            write!(f, "{}app=\"{}\"", sep, app)?;
+            write!(f, "{sep}app=\"{app}\"")?;
             sep = ", ";
         }
         if let Some(ref dlg) = self.dlg {
-            write!(f, "{}dlg=\"{}\"", sep, dlg)?;
+            write!(f, "{sep}dlg=\"{dlg}\"")?;
         }
         Ok(())
     }
@@ -126,7 +126,7 @@ impl fmt::Display for Header {
 impl FromStr for Header {
     type Err = Error;
     fn from_str(s: &str) -> Result<Header> {
-        let mut p = &s[..];
+        let mut p = s;
 
         // Required attributes
         let mut id: Option<&str> = None;
@@ -152,7 +152,7 @@ impl FromStr for Header {
                     "Missing right hand side of =".into(),
                 ));
             }
-            p = (&p[assign_end + 1..]).trim_start();
+            p = p[assign_end + 1..].trim_start();
             if !p.starts_with('\"') {
                 return Err(Error::HeaderParseError("Expected opening quote".into()));
             }
@@ -200,32 +200,14 @@ impl FromStr for Header {
         }
 
         Ok(Header {
-            id: match id {
-                Some(id) => Some(id.to_string()),
-                None => None,
-            },
+            id: id.map(|id| id.to_string()),
             ts,
-            nonce: match nonce {
-                Some(nonce) => Some(nonce.to_string()),
-                None => None,
-            },
-            mac: match mac {
-                Some(mac) => Some(Mac::from(mac)),
-                None => None,
-            },
-            ext: match ext {
-                Some(ext) => Some(ext.to_string()),
-                None => None,
-            },
+            nonce: nonce.map(|nonce| nonce.to_string()),
+            mac: mac.map(Mac::from),
+            ext: ext.map(|ext| ext.to_string()),
             hash,
-            app: match app {
-                Some(app) => Some(app.to_string()),
-                None => None,
-            },
-            dlg: match dlg {
-                Some(dlg) => Some(dlg.to_string()),
-                None => None,
-            },
+            app: app.map(|app| app.to_string()),
+            dlg: dlg.map(|dlg| dlg.to_string()),
         })
     }
 }
@@ -351,13 +333,13 @@ mod test {
     #[test]
     fn from_str_no_field() {
         let s = Header::from_str("").unwrap();
-        assert!(s.id == None);
-        assert!(s.ts == None);
-        assert!(s.nonce == None);
-        assert!(s.mac == None);
-        assert!(s.ext == None);
-        assert!(s.app == None);
-        assert!(s.dlg == None);
+        assert!(s.id.is_none());
+        assert!(s.ts.is_none());
+        assert!(s.nonce.is_none());
+        assert!(s.mac.is_none());
+        assert!(s.ext.is_none());
+        assert!(s.app.is_none());
+        assert!(s.dlg.is_none());
     }
 
     #[test]
@@ -378,9 +360,9 @@ mod test {
                     6, 93, 75, 75, 52, 140, 102, 163, 91, 233, 50, 135, 233, 44, 1
                 ]))
         );
-        assert!(s.ext == None);
-        assert!(s.app == None);
-        assert!(s.dlg == None);
+        assert!(s.ext.is_none());
+        assert!(s.app.is_none());
+        assert!(s.dlg.is_none());
     }
 
     #[test]
@@ -402,17 +384,17 @@ mod test {
                 ]))
         );
         assert!(s.ext == Some("some-app-ext-data".to_string()));
-        assert!(s.app == None);
-        assert!(s.dlg == None);
+        assert!(s.app.is_none());
+        assert!(s.dlg.is_none());
     }
 
     #[test]
     fn to_str_no_fields() {
         // must supply a type for S, since it is otherwise unused
         let s = Header::new::<String>(None, None, None, None, None, None, None, None).unwrap();
-        let formatted = format!("{}", s);
-        println!("got: {}", formatted);
-        assert!(formatted == "")
+        let formatted = format!("{s}");
+        println!("got: {formatted}");
+        assert!(formatted.is_empty())
     }
 
     #[test]
@@ -431,8 +413,8 @@ mod test {
             None,
         )
         .unwrap();
-        let formatted = format!("{}", s);
-        println!("got: {}", formatted);
+        let formatted = format!("{s}");
+        println!("got: {formatted}");
         assert!(
             formatted
                 == "id=\"dh37fgj492je\", ts=\"1353832234\", nonce=\"j4h3g2\", \
@@ -456,8 +438,8 @@ mod test {
             Some("my-dlg"),
         )
         .unwrap();
-        let formatted = format!("{}", s);
-        println!("got: {}", formatted);
+        let formatted = format!("{s}");
+        println!("got: {formatted}");
         assert!(
             formatted
                 == "id=\"dh37fgj492je\", ts=\"1353832234\", nonce=\"j4h3g2\", \
@@ -482,8 +464,8 @@ mod test {
             Some("my-dlg"),
         )
         .unwrap();
-        let formatted = format!("{}", s);
-        println!("got: {}", s);
+        let formatted = format!("{s}");
+        println!("got: {s}");
         let s2 = Header::from_str(&formatted).unwrap();
         assert!(s2 == s);
     }

@@ -1,7 +1,6 @@
 use crate::b64;
 use crate::error::*;
 use crate::mac::Mac;
-use base64;
 use base64::Engine;
 use std::borrow::Cow;
 use std::str;
@@ -28,10 +27,7 @@ impl<'a> Bewit<'a> {
             id: Cow::Borrowed(id),
             exp,
             mac: Cow::Owned(mac),
-            ext: match ext {
-                Some(s) => Some(Cow::Borrowed(s)),
-                None => None,
-            },
+            ext: ext.map(Cow::Borrowed),
         }
     }
 
@@ -51,7 +47,7 @@ impl<'a> Bewit<'a> {
             }
         );
 
-        b64::BEWIT_ENGINE.encode(&raw)
+        b64::BEWIT_ENGINE.encode(raw)
     }
 
     /// Get the Bewit's client identifier
@@ -191,30 +187,30 @@ mod test {
 
     #[test]
     fn test_from_str_invalid_too_many_parts() {
-        let bewit = b64::BEWIT_ENGINE.encode(&"a\\123\\abc\\ext\\WHUT?".as_bytes());
+        let bewit = b64::BEWIT_ENGINE.encode("a\\123\\abc\\ext\\WHUT?".as_bytes());
         assert!(Bewit::from_str(&bewit).is_err());
     }
 
     #[test]
     fn test_from_str_invalid_too_few_parts() {
-        let bewit = b64::BEWIT_ENGINE.encode(&"a\\123\\abc".as_bytes());
+        let bewit = b64::BEWIT_ENGINE.encode("a\\123\\abc".as_bytes());
         assert!(Bewit::from_str(&bewit).is_err());
     }
 
     #[test]
     fn test_from_str_invalid_not_utf8() {
-        let a = 'a' as u8;
-        let one = '1' as u8;
-        let slash = '\\' as u8;
+        let a = b'a';
+        let one = b'1';
+        let slash = b'\\';
         let invalid1 = 0u8;
         let invalid2 = 159u8;
-        let bewit = b64::BEWIT_ENGINE.encode(&[invalid1, invalid2, slash, one, slash, a, slash, a]);
+        let bewit = b64::BEWIT_ENGINE.encode([invalid1, invalid2, slash, one, slash, a, slash, a]);
         assert!(Bewit::from_str(&bewit).is_err());
-        let bewit = b64::BEWIT_ENGINE.encode(&[a, slash, invalid1, invalid2, slash, a, slash, a]);
+        let bewit = b64::BEWIT_ENGINE.encode([a, slash, invalid1, invalid2, slash, a, slash, a]);
         assert!(Bewit::from_str(&bewit).is_err());
-        let bewit = b64::BEWIT_ENGINE.encode(&[a, slash, one, slash, invalid1, invalid2, slash, a]);
+        let bewit = b64::BEWIT_ENGINE.encode([a, slash, one, slash, invalid1, invalid2, slash, a]);
         assert!(Bewit::from_str(&bewit).is_err());
-        let bewit = b64::BEWIT_ENGINE.encode(&[a, slash, one, slash, a, slash, invalid1, invalid2]);
+        let bewit = b64::BEWIT_ENGINE.encode([a, slash, one, slash, a, slash, invalid1, invalid2]);
         assert!(Bewit::from_str(&bewit).is_err());
     }
 }

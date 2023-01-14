@@ -1,16 +1,11 @@
 use crate::crypto::{self, HmacKey};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Debug)]
+#[non_exhaustive]
 pub enum DigestAlgorithm {
     Sha256,
     Sha384,
     Sha512,
-    // Indicate that this isn't an enum that anyone should match on, and that we
-    // reserve the right to add to this enumeration without making a major
-    // version bump. Once https://github.com/rust-lang/rfcs/blob/master/text/2008-non-exhaustive.md
-    // is stabilized, that should be used instead.
-    #[doc(hidden)]
-    _Nonexhaustive,
 }
 
 /// Hawk key.
