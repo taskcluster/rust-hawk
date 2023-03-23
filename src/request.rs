@@ -82,22 +82,10 @@ impl<'a> Request<'a> {
             Some(ts),
             Some(nonce),
             Some(mac),
-            match self.ext {
-                None => None,
-                Some(v) => Some(v.to_string()),
-            },
-            match self.hash {
-                None => None,
-                Some(v) => Some(v.to_vec()),
-            },
-            match self.app {
-                None => None,
-                Some(v) => Some(v.to_string()),
-            },
-            match self.dlg {
-                None => None,
-                Some(v) => Some(v.to_string()),
-            },
+            self.ext.map(|v| v.to_string()),
+            self.hash.map(|v| v.to_vec()),
+            self.app.map(|v| v.to_string()),
+            self.dlg.map(|v| v.to_string()),
         )
     }
 
@@ -170,14 +158,8 @@ impl<'a> Request<'a> {
                 return false;
             }
         };
-        let header_hash = match header.hash {
-            Some(ref hash) => Some(&hash[..]),
-            None => None,
-        };
-        let header_ext = match header.ext {
-            Some(ref ext) => Some(&ext[..]),
-            None => None,
-        };
+        let header_hash = header.hash.as_ref().map(|hash| &hash[..]);
+        let header_ext = header.ext.as_ref().map(|ext| &ext[..]);
 
         // first verify the MAC
         match Mac::new(
@@ -403,7 +385,7 @@ impl<'a> RequestBuilder<'a> {
 
                 // update the path to omit the bewit=... segment
                 let new_path = if !components.is_empty() {
-                    format!("{}{}", &self.0.path[..=query_index], components.join("&")).to_string()
+                    format!("{}{}", &self.0.path[..=query_index], components.join("&"))
                 } else {
                     // no query left, so return the remaining path, omitting the '?'
                     self.0.path[..query_index].to_string()
@@ -423,10 +405,10 @@ impl<'a> RequestBuilder<'a> {
     fn parse_url(url: &'a Url) -> Result<(&'a str, u16, &'a str)> {
         let host = url
             .host_str()
-            .ok_or_else(|| Error::InvalidUrl(format!("url {} has no host", url)))?;
+            .ok_or_else(|| Error::InvalidUrl(format!("url {url} has no host")))?;
         let port = url
             .port_or_known_default()
-            .ok_or_else(|| Error::InvalidUrl(format!("url {} has no port", url)))?;
+            .ok_or_else(|| Error::InvalidUrl(format!("url {url} has no port")))?;
         let path = &url[Position::BeforePath..];
         Ok((host, port, path))
     }
@@ -451,7 +433,7 @@ mod test {
 
     // this is a header from a real request using the JS Hawk library, to
     // https://pulse.taskcluster.net:443/v1/namespaces with credentials "me" / "tok"
-    const REAL_HEADER: &'static str = "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", \
+    const REAL_HEADER: &str = "id=\"me\", ts=\"1491183061\", nonce=\"RVnYzW\", \
                                        mac=\"1kqRT9EoxiZ9AA/ayOCXB+AcjfK/BoJ+n7z0gfvZotQ=\"";
     const BEWIT_STR: &str =
         "bWVcMTM1MzgzMjgzNFxmaXk0ZTV3QmRhcEROeEhIZUExOE5yU3JVMVUzaVM2NmdtMFhqVEpwWXlVPVw";
@@ -566,7 +548,7 @@ mod test {
 
     #[test]
     fn test_url_builder_with_bewit_alone() {
-        let url = Url::parse(&format!("https://example.com/foo?bewit={}", BEWIT_STR)).unwrap();
+        let url = Url::parse(&format!("https://example.com/foo?bewit={BEWIT_STR}")).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
         let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
@@ -582,7 +564,7 @@ mod test {
 
     #[test]
     fn test_url_builder_with_bewit_first() {
-        let url = Url::parse(&format!("https://example.com/foo?bewit={}&a=1", BEWIT_STR)).unwrap();
+        let url = Url::parse(&format!("https://example.com/foo?bewit={BEWIT_STR}&a=1")).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
         let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
@@ -599,8 +581,7 @@ mod test {
     #[test]
     fn test_url_builder_with_bewit_multiple() {
         let url = Url::parse(&format!(
-            "https://example.com/foo?bewit={}&bewit={}",
-            BEWIT_STR, BEWIT_STR
+            "https://example.com/foo?bewit={BEWIT_STR}&bewit={BEWIT_STR}"
         ))
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
@@ -622,7 +603,7 @@ mod test {
 
     #[test]
     fn test_url_builder_with_bewit_last() {
-        let url = Url::parse(&format!("https://example.com/foo?a=1&bewit={}", BEWIT_STR)).unwrap();
+        let url = Url::parse(&format!("https://example.com/foo?a=1&bewit={BEWIT_STR}")).unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
 
         let mut bewit = Some(Bewit::from_str(INITIAL_BEWIT_STR).unwrap());
@@ -639,8 +620,7 @@ mod test {
     #[test]
     fn test_url_builder_with_bewit_middle() {
         let url = Url::parse(&format!(
-            "https://example.com/foo?a=1&bewit={}&b=2",
-            BEWIT_STR
+            "https://example.com/foo?a=1&bewit={BEWIT_STR}&b=2"
         ))
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
@@ -662,8 +642,7 @@ mod test {
         // of thing that incautious libraries can sometimes fail to reproduce,
         // causing Hawk validation failures
         let url = Url::parse(&format!(
-            "https://example.com/foo?%66oo=1&bewit={}&%62ar=2",
-            BEWIT_STR
+            "https://example.com/foo?%66oo=1&bewit={BEWIT_STR}&%62ar=2"
         ))
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
@@ -683,8 +662,7 @@ mod test {
     fn test_url_builder_with_xxxbewit() {
         // check that we're not doing a simple string search for "bewit=.."
         let url = Url::parse(&format!(
-            "https://example.com/foo?a=1&xxxbewit={}&b=2",
-            BEWIT_STR
+            "https://example.com/foo?a=1&xxxbewit={BEWIT_STR}&b=2"
         ))
         .unwrap();
         let bldr = RequestBuilder::from_url("GET", &url).unwrap();
@@ -695,7 +673,7 @@ mod test {
 
         let req = bldr.request();
 
-        assert_eq!(req.path, format!("/foo?a=1&xxxbewit={}&b=2", BEWIT_STR));
+        assert_eq!(req.path, format!("/foo?a=1&xxxbewit={BEWIT_STR}&b=2"));
         assert_eq!(req.host, "example.com");
         assert_eq!(req.port, 443); // default for https
     }
@@ -788,7 +766,7 @@ mod test {
         let header = req
             .make_header_full(&credentials, SystemTime::now(), "nonny")
             .unwrap();
-        assert!(req.validate_header(&header, &credentials.key, Duration::from_secs(1 * 60)));
+        assert!(req.validate_header(&header, &credentials.key, Duration::from_secs(60)));
     }
 
     // Well, close enough.

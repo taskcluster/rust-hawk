@@ -81,7 +81,6 @@ impl TryFrom<DigestAlgorithm> for &'static digest::Algorithm {
             DigestAlgorithm::Sha256 => Ok(&digest::SHA256),
             DigestAlgorithm::Sha384 => Ok(&digest::SHA384),
             DigestAlgorithm::Sha512 => Ok(&digest::SHA512),
-            algo => Err(CryptoError::UnsupportedDigest(algo)),
         }
     }
 }
@@ -93,7 +92,6 @@ impl TryFrom<DigestAlgorithm> for hmac::Algorithm {
             DigestAlgorithm::Sha256 => Ok(hmac::HMAC_SHA256),
             DigestAlgorithm::Sha384 => Ok(hmac::HMAC_SHA384),
             DigestAlgorithm::Sha512 => Ok(hmac::HMAC_SHA512),
-            algo => Err(CryptoError::UnsupportedDigest(algo)),
         }
     }
 }

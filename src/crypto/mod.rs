@@ -79,5 +79,5 @@ pub(crate) fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
 }
 
 pub(crate) fn new_hasher(algorithm: DigestAlgorithm) -> Result<Box<dyn Hasher>, CryptoError> {
-    Ok(get_crypographer().new_hasher(algorithm)?)
+    get_crypographer().new_hasher(algorithm)
 }

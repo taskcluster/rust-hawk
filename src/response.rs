@@ -27,10 +27,9 @@ pub struct Response<'a> {
 impl<'a> Response<'a> {
     /// Create a new Header for this response, based on the given request and request header
     pub fn make_header(&self, key: &Key) -> Result<Header> {
-        let mac;
         let ts = self.req_header.ts.ok_or(Error::MissingTs)?;
         let nonce = self.req_header.nonce.as_ref().ok_or(Error::MissingNonce)?;
-        mac = Mac::new(
+        let mac = Mac::new(
             MacType::Response,
             key,
             ts,
@@ -49,14 +48,8 @@ impl<'a> Response<'a> {
             None,
             None,
             Some(mac),
-            match self.ext {
-                None => None,
-                Some(v) => Some(v.to_string()),
-            },
-            match self.hash {
-                None => None,
-                Some(v) => Some(v.to_vec()),
-            },
+            self.ext.map(|v| v.to_string()),
+            self.hash.map(|v| v.to_vec()),
             None,
             None,
         )
@@ -86,14 +79,8 @@ impl<'a> Response<'a> {
                 return false;
             }
         };
-        let header_ext = match response_header.ext {
-            Some(ref ext) => Some(&ext[..]),
-            None => None,
-        };
-        let header_hash = match response_header.hash {
-            Some(ref hash) => Some(&hash[..]),
-            None => None,
-        };
+        let header_ext = response_header.ext.as_ref().map(|ext| &ext[..]);
+        let header_hash = response_header.hash.as_ref().map(|hash| &hash[..]);
 
         // first verify the MAC
         match Mac::new(

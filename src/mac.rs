@@ -135,7 +135,7 @@ mod test {
             None,
         )
         .unwrap();
-        println!("got {:?}", mac);
+        println!("got {mac:?}");
         assert!(
             mac.0
                 == vec![
@@ -162,7 +162,7 @@ mod test {
             None,
         )
         .unwrap();
-        println!("got {:?}", mac);
+        println!("got {mac:?}");
         assert!(
             mac.0
                 == vec![
@@ -189,7 +189,7 @@ mod test {
             Some(&ext),
         )
         .unwrap();
-        println!("got {:?}", mac);
+        println!("got {mac:?}");
         assert!(
             mac.0
                 == vec![
