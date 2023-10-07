@@ -23,7 +23,7 @@ struct RingHmacKey(hmac::Key);
 impl HmacKey for RingHmacKey {
     fn sign(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let digest = hmac::sign(&self.0, data);
-        let mut mac = vec![0; self.0.algorithm().digest_algorithm().output_len];
+        let mut mac = vec![0; self.0.algorithm().digest_algorithm().output_len()];
         mac.copy_from_slice(digest.as_ref());
         Ok(mac)
     }
