@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased Changes
+## v5.0.0
+
+- `ring` upgraded to 0.17.0
+- `base64` upgraded
+- Support Rust 2021 edition
 
 ## v4.0.0
 
