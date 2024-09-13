@@ -1,5 +1,9 @@
 # Changelog
 
+## v5.0.1
+
+- `base64` upgraded to 0.22
+
 ## v5.0.0
 
 - `ring` upgraded to 0.17.0
