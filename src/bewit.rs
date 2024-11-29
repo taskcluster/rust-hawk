@@ -74,6 +74,12 @@ impl<'a> Bewit<'a> {
     }
 }
 
+impl<'a> From<Bewit<'a>> for String {
+    fn from(bewit: Bewit<'a>) -> Self {
+        bewit.to_str()
+    }
+}
+
 const BACKSLASH: u8 = b'\\';
 
 impl<'a> FromStr for Bewit<'a> {
@@ -169,6 +175,17 @@ mod test {
             Some("abcd"),
         );
         assert_eq!(bewit.to_str(), BEWIT_WITH_EXT_STR);
+    }
+
+    #[test]
+    fn test_from_bewit_for_string() {
+        let bewit = Bewit::new(
+            "me",
+            UNIX_EPOCH + Duration::new(1353832834, 0),
+            make_mac(),
+            None,
+        );
+        assert_eq!(String::from(bewit), BEWIT_STR);
     }
 
     #[test]
